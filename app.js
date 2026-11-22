@@ -261,11 +261,14 @@ function mountPlayer(el) {
   const k = m.trailer.key;
   const origin = location.origin && location.origin !== 'null' ? '&origin=' + encodeURIComponent(location.origin) : '';
   const f = document.createElement('iframe');
-  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=${view === 'fill' ? 0 : 1}&iv_load_policy=3&loop=1&playlist=${k}${origin}`;
+  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&loop=1&playlist=${k}${origin}`;
   f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   f.allowFullscreen = true;
   f.referrerPolicy = 'strict-origin-when-cross-origin';
-  f.onload = () => { if (!muted) [300, 1000, 2000].forEach((t) => setTimeout(() => ytCmd(f, 'unMute'), t)); };
+  f.onload = () => {
+    // ask the player to report play/pause so our state stays in sync
+    try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: k }), '*'); } catch {}
+    if (!muted) [300, 1000, 2000].forEach((t) => setTimeout(() => ytCmd(f, 'unMute'), t)); };
   stage.appendChild(f);
 }
 function unmountPlayer(el) { el.querySelector('.stage iframe')?.remove(); el.classList.remove('paused'); }
@@ -277,6 +280,16 @@ function wake(el) {
   clearTimeout(calmTimer);
   calmTimer = setTimeout(() => { if (active === el && !el.classList.contains('paused')) el.classList.add('calm'); }, 3000);
 }
+// Player reports its state: 1 = playing, 2 = paused. Keeps our pause icon right when YouTube itself is tapped.
+window.addEventListener('message', (e) => {
+  if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
+  let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
+  const st = d?.info?.playerState;
+  const el = active, f = el?.querySelector('iframe');
+  if (st === undefined || !f || e.source !== f.contentWindow) return;
+  if (st === 2 && !el.classList.contains('paused')) { el.classList.add('paused'); clearTimeout(calmTimer); }
+  else if (st === 1 && el.classList.contains('paused')) { el.classList.remove('paused'); wake(el); if (!muted) ytCmd(f, 'unMute'); }
+});
 function togglePause(el) {
   const f = el.querySelector('iframe'); if (!f) return;
   const paused = el.classList.toggle('paused');
@@ -379,7 +392,6 @@ function setView(v) {
   view = v;
   LS.set('view2', view);
   applyView();
-  if (active) { unmountPlayer(active); mountPlayer(active); } // reload so controls match the mode
 };
 applyView();
 

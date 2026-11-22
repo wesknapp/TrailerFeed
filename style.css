@@ -18,8 +18,10 @@ a { color: #7cc4ff; }
 .card { position: relative; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden;
   display: flex; flex-direction: column; justify-content: center; }
 .card .bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(28px) brightness(.45); transform: scale(1.2); }
-.card .stage { position: relative; width: 100%; aspect-ratio: 16/9; background: #000 center/cover no-repeat; z-index: 1; }
-.card .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.card .stage { position: relative; width: 100%; aspect-ratio: 16/9; background: #000 center/cover no-repeat; z-index: 1; overflow: hidden; }
+/* The player is made 200px taller than the box: YouTube centres the video and puts its title bar, logo and
+   controls in the black bars above/below, which the box then trims off. The video picture itself isn't cropped. */
+.card .stage iframe { position: absolute; left: 0; top: -100px; width: 100%; height: calc(100% + 200px); border: 0; }
 .card .stage .play-hint { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; opacity: .85; text-shadow: 0 2px 12px #000; }
 .card .info { position: relative; z-index: 1; padding: 18px 76px 0 16px; }
 .card h2 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
@@ -80,17 +82,18 @@ a { color: #7cc4ff; }
 .error { color: #ff6b6b; margin-top: 10px; font-size: 14px; }
 
 /* Tap layer + paused icon (only active in Fill mode) */
-.card .tap { display: none; position: absolute; inset: 0; z-index: 2; place-items: center; }
+.card .tap { display: grid; position: absolute; inset: 0; z-index: 2; place-items: center; }
 .card .paused-ico { font-size: 64px; opacity: 0; transition: opacity .15s; text-shadow: 0 2px 16px #000; pointer-events: none; }
 .card.paused .paused-ico { opacity: .9; }
+/* While paused, taps go straight to YouTube so resuming counts as a real tap on the video (helps iPhone sound). */
+.card.paused .tap { pointer-events: none; }
 .card.paused .play-hint { display: none; }
 
 /* Fill mode: video covers the whole card (sides cropped), info floats over it */
 body.fill .card { justify-content: flex-end; }
-body.fill .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; overflow: hidden; }
-body.fill .card .stage iframe { inset: auto; top: 50%; left: 50%; height: 100%; width: calc(100dvh * 16 / 9); min-width: 100%;
-  transform: translate(-50%, -50%); }
-body.fill .card .tap { display: grid; }
+body.fill .card .stage, body.fill.fs .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; transform: none; margin: 0; overflow: hidden; }
+body.fill .card .stage iframe { top: 50%; left: 50%; width: max(100%, calc(100dvh * 16 / 9));
+  height: calc(max(100dvh, 100vw * 9 / 16) + 200px); transform: translate(-50%, -50%); }
 body.fill .card .info { z-index: 3; padding-top: 80px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
   background: linear-gradient(#0000, #000b 45%, #000e); pointer-events: none; }
 body.fill .card .info .overview { pointer-events: auto; }
@@ -106,14 +109,14 @@ body.fill .card.calm .actions { opacity: .25; }
 /* Phone turned sideways: video only, full screen */
 @media (orientation: landscape) and (max-height: 520px) {
   .card .info, .card .actions, .card .bg { display: none; }
-  .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; }
+  .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; }
   #topbar { opacity: .6; }
 }
 
 /* Browser full screen in landscape (PC, Android): video only */
 @media (orientation: landscape) {
   body.fs .card .info, body.fs .card .actions, body.fs .card .bg { display: none; }
-  body.fs .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; margin: 0; border-radius: 0; box-shadow: none; }
+  body.fs .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; border-radius: 0; box-shadow: none; }
   body.fs #topbar { opacity: .35; transition: opacity .2s; }
   body.fs #topbar:hover { opacity: 1; }
 }
