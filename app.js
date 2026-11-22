@@ -117,6 +117,15 @@ function pickTrailer(vids) {
   return yt[0];
 }
 
+// Double-check the movie's own release date: TMDB's date filter can let old films through on a re-release
+// (e.g. an anniversary re-release), so they'd show with their original date from years ago.
+function inRelease(m) {
+  const back = { new: 90, year: 365 }[filters.release];
+  const d = m.release_date;
+  if (filters.release === 'upcoming') return !!d && d > ymd(new Date());
+  if (back) return !!d && d >= ymd(new Date(Date.now() - back * DAY));
+  return true;
+}
 const inWindow = (m) => !filters.windowDays || Date.now() - new Date(m.trailer.published_at) <= filters.windowDays * DAY;
 
 function tasteScore(m) {
@@ -149,7 +158,7 @@ async function loadMore() {
       page++; tried++;
       const data = await tmdb('/discover/movie', discoverParams());
       if (page >= Math.min(data.total_pages || 0, 500)) exhausted = true;
-      const cands = data.results.filter((m) => !seen.has(m.id) && !disliked[m.id]);
+      const cands = data.results.filter((m) => !seen.has(m.id) && !disliked[m.id] && inRelease(m));
       cands.forEach((m) => seen.add(m.id));
       const withVids = await Promise.all(cands.map(async (m) => {
         try {
