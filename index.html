@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrailerFeed">
+<title>TrailerFeed</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- First-run setup -->
+<div id="setup" class="screen hidden">
+  <div class="setup-box">
+    <h1>🎬 TrailerFeed</h1>
+    <p>Swipe through fresh movie trailers. Needs a free TMDB key — it's stored only on this device.</p>
+    <ol>
+      <li>Sign up at <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">themoviedb.org</a></li>
+      <li>Settings → API → copy the <b>API Read Access Token</b> (or the API Key)</li>
+    </ol>
+    <input id="keyInput" type="text" placeholder="Paste token or key" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="keySave" class="primary">Start watching</button>
+    <p id="keyError" class="error"></p>
+  </div>
+</div>
+
+<!-- Top bar -->
+<header id="topbar">
+  <button id="btnFilters" class="pill" aria-label="Filters">⚙︎ <span id="filterLabel">Past month</span></button>
+  <div class="spacer"></div>
+  <button id="btnSaved" class="icon-btn" aria-label="Saved">♥</button>
+  <button id="btnSound" class="icon-btn" aria-label="Sound">🔇</button>
+</header>
+
+<!-- Feed -->
+<main id="feed"></main>
+<div id="status" class="status"></div>
+
+<!-- Filter sheet -->
+<div id="filterSheet" class="sheet hidden">
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2>Filters</h2><button class="close" data-close="filterSheet">✕</button></div>
+
+    <h3>Trailer released</h3>
+    <div id="windowSeg" class="seg">
+      <button data-w="7">Past week</button>
+      <button data-w="30">Past month</button>
+      <button data-w="90">3 months</button>
+      <button data-w="0">Any time</button>
+    </div>
+
+    <h3>Movies</h3>
+    <div id="releaseSeg" class="seg">
+      <button data-r="new">New &amp; upcoming</button>
+      <button data-r="upcoming">Upcoming only</button>
+      <button data-r="all">Any</button>
+    </div>
+
+    <h3>Categories <small>(none = all)</small></h3>
+    <div id="genreChips" class="chips"></div>
+
+    <label class="toggle"><input type="checkbox" id="hideWatched"> Hide trailers I've already watched</label>
+
+    <button id="applyFilters" class="primary">Apply</button>
+
+    <details class="settings">
+      <summary>Settings</summary>
+      <button id="resetTaste">Reset recommendations</button>
+      <button id="clearHistory">Clear watch history</button>
+      <button id="changeKey">Change TMDB key</button>
+      <p class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+    </details>
+  </div>
+</div>
+
+<!-- Saved / history sheet -->
+<div id="savedSheet" class="sheet hidden">
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2>Your list</h2><button class="close" data-close="savedSheet">✕</button></div>
+    <div class="seg" id="listSeg">
+      <button data-l="liked" class="on">Saved</button>
+      <button data-l="watched">Watched</button>
+    </div>
+    <div id="listBody" class="list"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
