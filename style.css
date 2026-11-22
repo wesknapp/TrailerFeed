@@ -9,7 +9,7 @@ a { color: #7cc4ff; }
   padding: calc(env(safe-area-inset-top) + 10px) 12px 10px; background: linear-gradient(#000a, #0000); pointer-events: none; }
 #topbar > * { pointer-events: auto; }
 .spacer { flex: 1; }
-.pill { background: #ffffff22; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+.pill { min-width: 0; max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #ffffff22; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
 .icon-btn { width: 40px; height: 40px; border-radius: 50%; background: #ffffff22; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 18px; }
 
 /* Feed */

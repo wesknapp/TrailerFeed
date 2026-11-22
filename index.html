@@ -50,19 +50,20 @@
   <div class="sheet-inner">
     <div class="sheet-head"><h2>Filters</h2><button class="close" data-close="filterSheet">✕</button></div>
 
-    <h3>Trailer released</h3>
+    <h3>Movie release date</h3>
+    <div id="releaseSeg" class="seg">
+      <button data-r="upcoming">Coming soon</button>
+      <button data-r="new">Out in last 3 months + coming soon</button>
+      <button data-r="year">Out in last year + coming soon</button>
+      <button data-r="any">All years (incl. old films)</button>
+    </div>
+
+    <h3>Trailer uploaded <small>(to YouTube)</small></h3>
     <div id="windowSeg" class="seg">
       <button data-w="7">Past week</button>
       <button data-w="30">Past month</button>
       <button data-w="90">3 months</button>
       <button data-w="0">Any time</button>
-    </div>
-
-    <h3>Movies</h3>
-    <div id="releaseSeg" class="seg">
-      <button data-r="new">New &amp; upcoming</button>
-      <button data-r="upcoming">Upcoming only</button>
-      <button data-r="all">Any</button>
     </div>
 
     <h3>Video size <small>(changes right away)</small></h3>

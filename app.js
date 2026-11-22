@@ -15,6 +15,7 @@ const LS = {
 
 let apiKey = LS.get('key', '');
 let filters = Object.assign({ windowDays: 30, release: 'new', lang: 'en', genres: [], hideWatched: true }, LS.get('filters', {}));
+if (filters.release === 'all') filters.release = 'new'; // old 'Any' setting let classic films in; reset to the default
 let taste = LS.get('taste', {});        // genreId -> weight
 let history = LS.get('history', {});    // movieId -> summary (watched trailers)
 let liked = LS.get('liked', {});        // movieId -> summary
@@ -91,9 +92,12 @@ $('#keySave').onclick = async () => {
 function discoverParams() {
   const now = Date.now();
   const p = { sort_by: 'popularity.desc', include_adult: 'false', include_video: 'false', language: 'en-US', page };
-  if (filters.release === 'new') {
-    p['primary_release_date.gte'] = ymd(new Date(now - 120 * DAY));
-    p['primary_release_date.lte'] = ymd(new Date(now + 365 * DAY));
+  // Movie release date: 'new' = out in the last 3 months or coming soon, 'year' = last 12 months or coming soon,
+  // 'upcoming' = not out yet, 'any' = every year (old films whose trailers were re-uploaded can show up)
+  const back = { new: 90, year: 365 }[filters.release];
+  if (back) {
+    p['primary_release_date.gte'] = ymd(new Date(now - back * DAY));
+    p['primary_release_date.lte'] = ymd(new Date(now + 540 * DAY));
   } else if (filters.release === 'upcoming') {
     p['primary_release_date.gte'] = ymd(new Date(now + DAY));
     p['primary_release_date.lte'] = ymd(new Date(now + 540 * DAY));
@@ -396,11 +400,11 @@ function setView(v) {
 applyView();
 
 // ---------- filters sheet ----------
-const WIN_LABEL = { 7: 'Past week', 30: 'Past month', 90: 'Past 3 months', 0: 'Any time' };
+const REL_LABEL = { new: 'New', year: 'Past year', upcoming: 'Coming soon', any: 'All years' };
 let draft = null;
 
 function updateFilterLabel() {
-  let t = WIN_LABEL[filters.windowDays] || 'Any time';
+  let t = REL_LABEL[filters.release] || 'New';
   if (filters.genres.length === 1) t += ' · ' + (genreName(filters.genres[0]) || '');
   else if (filters.genres.length > 1) t += ' · ' + filters.genres.length + ' genres';
   $('#filterLabel').textContent = t;
