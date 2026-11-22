@@ -83,6 +83,7 @@ a { color: #7cc4ff; }
 .card .tap { display: none; position: absolute; inset: 0; z-index: 2; place-items: center; }
 .card .paused-ico { font-size: 64px; opacity: 0; transition: opacity .15s; text-shadow: 0 2px 16px #000; pointer-events: none; }
 .card.paused .paused-ico { opacity: .9; }
+.card.paused .play-hint { display: none; }
 
 /* Fill mode: video covers the whole card (sides cropped), info floats over it */
 body.fill .card { justify-content: flex-end; }
@@ -109,8 +110,21 @@ body.fill .card.calm .actions { opacity: .25; }
   #topbar { opacity: .6; }
 }
 
-/* Desktop: keep it phone-shaped */
+/* Browser full screen in landscape (PC, Android): video only */
+@media (orientation: landscape) {
+  body.fs .card .info, body.fs .card .actions, body.fs .card .bg { display: none; }
+  body.fs .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; margin: 0; border-radius: 0; box-shadow: none; }
+  body.fs #topbar { opacity: .35; transition: opacity .2s; }
+  body.fs #topbar:hover { opacity: 1; }
+}
+
+/* PC / tablet: big centred video with the details underneath */
 @media (min-width: 700px) and (min-height: 521px) {
-  #feed { max-width: 480px; margin: 0 auto; }
-  #topbar { max-width: 480px; margin: 0 auto; }
+  .card .stage, .card .info { width: min(calc(100% - 180px), calc((100dvh - 240px) * 16 / 9)); margin: 0 auto; }
+  .card .stage { border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px #000c; }
+  .card .info { padding: 18px 0 0; }
+  .card h2 { font-size: 26px; }
+  .card .actions { right: 28px; bottom: auto; top: 50%; transform: translateY(-50%); }
+  body.fill .card .stage { border-radius: 0; margin: 0; }
+  body.fill .card .info { padding-left: 24px; padding-right: 24px; }
 }

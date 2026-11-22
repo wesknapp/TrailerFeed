@@ -21,7 +21,7 @@ let liked = LS.get('liked', {});        // movieId -> summary
 let disliked = LS.get('disliked', {});  // movieId -> 1
 let genres = LS.get('genres', []);      // [{id,name}]
 let muted = true;
-let view = LS.get('view', 'fill'); // 'fill' = zoom video to cover the screen, 'fit' = whole 16:9 frame
+let view = LS.get('view2', 'fit'); // 'fit' = whole 16:9 frame, 'fill' = zoom to cover the screen (crops the sides)
 
 const $ = (s) => document.querySelector(s);
 const feed = $('#feed');
@@ -218,11 +218,7 @@ function renderCard(m) {
     e.stopPropagation();
     if (active !== el) return el.scrollIntoView({ behavior: 'smooth' });
     if (el.classList.contains('calm')) return wake(el);
-    const f = el.querySelector('iframe'); if (!f) return;
-    const paused = el.classList.toggle('paused');
-    if (paused) clearTimeout(calmTimer); else wake(el);
-    ytCmd(f, paused ? 'pauseVideo' : 'playVideo');
-    if (!paused && !muted) ytCmd(f, 'unMute');
+    togglePause(el);
   };
   el.querySelector('.actions').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -281,6 +277,13 @@ function wake(el) {
   clearTimeout(calmTimer);
   calmTimer = setTimeout(() => { if (active === el && !el.classList.contains('paused')) el.classList.add('calm'); }, 3000);
 }
+function togglePause(el) {
+  const f = el.querySelector('iframe'); if (!f) return;
+  const paused = el.classList.toggle('paused');
+  if (paused) clearTimeout(calmTimer); else wake(el);
+  ytCmd(f, paused ? 'pauseVideo' : 'playVideo');
+  if (!paused && !muted) ytCmd(f, 'unMute');
+}
 function activate(el) {
   if (active === el) return;
   if (active) deactivate(active);
@@ -324,20 +327,57 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-$('#btnSound').onclick = () => {
+function toggleSound() {
   muted = !muted;
   $('#btnSound').textContent = muted ? '🔇' : '🔊';
   const f = active?.querySelector('iframe');
   if (f) { ytCmd(f, muted ? 'mute' : 'unMute'); if (!muted) ytCmd(f, 'playVideo'); }
-};
+}
+$('#btnSound').onclick = toggleSound;
+
+// Full screen (PC and Android; iPhone Safari doesn't allow it for web pages, so the button hides there)
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFullscreen() {
+  const d = document.documentElement;
+  if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else (d.requestFullscreen || d.webkitRequestFullscreen)?.call(d)?.catch?.(() => {});
+}
+if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) $('#btnFull').classList.add('hidden');
+$('#btnFull').onclick = toggleFullscreen;
+const onFs = () => document.body.classList.toggle('fs', !!fsEl());
+document.addEventListener('fullscreenchange', onFs);
+document.addEventListener('webkitfullscreenchange', onFs);
+
+// Keyboard (PC): ↑/↓ or J/K = previous/next, Space = pause, M = sound, F = full screen, V = fit/fill
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || /INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+  if (document.querySelector('.sheet:not(.hidden), #setup:not(.hidden)')) return;
+  const k = e.key.toLowerCase();
+  const go = (dir) => {
+    const cur = active || feed.querySelector('.card');
+    const next = cur && (dir > 0 ? cur.nextElementSibling : cur.previousElementSibling);
+    if (next?.classList.contains('card')) next.scrollIntoView({ behavior: 'smooth' });
+  };
+  if (k === 'arrowdown' || k === 'j' || k === 'pagedown') go(1);
+  else if (k === 'arrowup' || k === 'k' || k === 'pageup') go(-1);
+  else if (k === ' ' && active) togglePause(active);
+  else if (k === 'm') toggleSound();
+  else if (k === 'f') toggleFullscreen();
+  else if (k === 'v') $('#btnView').click();
+  else return;
+  e.preventDefault();
+});
 
 function applyView() {
   document.body.classList.toggle('fill', view === 'fill');
   $('#btnView').textContent = view === 'fill' ? '⤡' : '⤢';
 }
 $('#btnView').onclick = () => {
-  view = view === 'fill' ? 'fit' : 'fill';
-  LS.set('view', view);
+  setView(view === 'fill' ? 'fit' : 'fill');
+};
+function setView(v) {
+  view = v;
+  LS.set('view2', view);
   applyView();
   if (active) { unmountPlayer(active); mountPlayer(active); } // reload so controls match the mode
 };
@@ -356,6 +396,7 @@ function updateFilterLabel() {
 function paintSheet() {
   document.querySelectorAll('#windowSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.w === draft.windowDays));
   document.querySelectorAll('#releaseSeg button').forEach((b) => b.classList.toggle('on', b.dataset.r === draft.release));
+  document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === view));
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.lang === (draft.lang || '')));
   $('#genreChips').innerHTML = genres.map((g) => `<button data-g="${g.id}" class="${draft.genres.includes(g.id) ? 'on' : ''}">${esc(g.name)}</button>`).join('');
   $('#hideWatched').checked = draft.hideWatched;
@@ -363,6 +404,7 @@ function paintSheet() {
 $('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); paintSheet(); $('#filterSheet').classList.remove('hidden'); };
 $('#windowSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.windowDays = +b.dataset.w; paintSheet(); } };
 $('#releaseSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.release = b.dataset.r; paintSheet(); } };
+$('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { setView(b.dataset.v); paintSheet(); } };
 $('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.lang = b.dataset.lang; paintSheet(); } };
 $('#genreChips').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;

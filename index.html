@@ -35,7 +35,8 @@
 <header id="topbar">
   <button id="btnFilters" class="pill" aria-label="Filters">⚙︎ <span id="filterLabel">Past month</span></button>
   <div class="spacer"></div>
-  <button id="btnView" class="icon-btn" aria-label="Fill or fit video">⤡</button>
+  <button id="btnView" class="icon-btn" aria-label="Fit or fill video" title="Fit / fill (V)">⤢</button>
+  <button id="btnFull" class="icon-btn" aria-label="Full screen" title="Full screen (F)">⛶</button>
   <button id="btnSaved" class="icon-btn" aria-label="Saved">♥</button>
   <button id="btnSound" class="icon-btn" aria-label="Sound">🔇</button>
 </header>
@@ -62,6 +63,12 @@
       <button data-r="new">New &amp; upcoming</button>
       <button data-r="upcoming">Upcoming only</button>
       <button data-r="all">Any</button>
+    </div>
+
+    <h3>Video size <small>(changes right away)</small></h3>
+    <div id="viewSeg" class="seg">
+      <button data-v="fit">Whole picture</button>
+      <button data-v="fill">Fill screen (crops sides)</button>
     </div>
 
     <h3>Language</h3>
