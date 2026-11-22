@@ -14,13 +14,14 @@ const LS = {
 };
 
 let apiKey = LS.get('key', '');
-let filters = Object.assign({ windowDays: 30, release: 'new', genres: [], hideWatched: true }, LS.get('filters', {}));
+let filters = Object.assign({ windowDays: 30, release: 'new', lang: 'en', genres: [], hideWatched: true }, LS.get('filters', {}));
 let taste = LS.get('taste', {});        // genreId -> weight
 let history = LS.get('history', {});    // movieId -> summary (watched trailers)
 let liked = LS.get('liked', {});        // movieId -> summary
 let disliked = LS.get('disliked', {});  // movieId -> 1
 let genres = LS.get('genres', []);      // [{id,name}]
 let muted = true;
+let view = LS.get('view', 'fill'); // 'fill' = zoom video to cover the screen, 'fit' = whole 16:9 frame
 
 const $ = (s) => document.querySelector(s);
 const feed = $('#feed');
@@ -97,6 +98,7 @@ function discoverParams() {
     p['primary_release_date.gte'] = ymd(new Date(now + DAY));
     p['primary_release_date.lte'] = ymd(new Date(now + 540 * DAY));
   }
+  if (filters.lang) p.with_original_language = filters.lang;
   if (filters.genres.length) p.with_genres = filters.genres.join('|'); // OR
   return p;
 }
@@ -192,7 +194,7 @@ function renderCard(m) {
   const g = (m.genre_ids || []).map(genreName).filter(Boolean).slice(0, 3).join(' · ');
   el.innerHTML = `
     <div class="bg" style="background-image:url('${back}')"></div>
-    <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div></div>
+    <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div><div class="tap"><span class="paused-ico">▶</span></div></div>
     <div class="info">
       <h2>${esc(m.title)}</h2>
       <div class="meta">
@@ -211,6 +213,17 @@ function renderCard(m) {
     </div>`;
   el.querySelector('.overview').onclick = (e) => e.currentTarget.classList.toggle('open');
   el.querySelector('.stage').onclick = () => { if (active !== el) el.scrollIntoView({ behavior: 'smooth' }); };
+  // Fill mode: a transparent layer over the video keeps swipes working and makes a tap pause/play.
+  el.querySelector('.tap').onclick = (e) => {
+    e.stopPropagation();
+    if (active !== el) return el.scrollIntoView({ behavior: 'smooth' });
+    if (el.classList.contains('calm')) return wake(el);
+    const f = el.querySelector('iframe'); if (!f) return;
+    const paused = el.classList.toggle('paused');
+    if (paused) clearTimeout(calmTimer); else wake(el);
+    ytCmd(f, paused ? 'pauseVideo' : 'playVideo');
+    if (!paused && !muted) ytCmd(f, 'unMute');
+  };
   el.querySelector('.actions').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const act = b.dataset.act;
@@ -252,26 +265,35 @@ function mountPlayer(el) {
   const k = m.trailer.key;
   const origin = location.origin && location.origin !== 'null' ? '&origin=' + encodeURIComponent(location.origin) : '';
   const f = document.createElement('iframe');
-  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&loop=1&playlist=${k}${origin}`;
+  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=${view === 'fill' ? 0 : 1}&iv_load_policy=3&loop=1&playlist=${k}${origin}`;
   f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   f.allowFullscreen = true;
   f.referrerPolicy = 'strict-origin-when-cross-origin';
   f.onload = () => { if (!muted) [300, 1000, 2000].forEach((t) => setTimeout(() => ytCmd(f, 'unMute'), t)); };
   stage.appendChild(f);
 }
-function unmountPlayer(el) { el.querySelector('.stage iframe')?.remove(); }
+function unmountPlayer(el) { el.querySelector('.stage iframe')?.remove(); el.classList.remove('paused'); }
 
+// Fade the overlay text/buttons a few seconds into a trailer so the video is visible.
+let calmTimer = 0;
+function wake(el) {
+  el.classList.remove('calm');
+  clearTimeout(calmTimer);
+  calmTimer = setTimeout(() => { if (active === el && !el.classList.contains('paused')) el.classList.add('calm'); }, 3000);
+}
 function activate(el) {
   if (active === el) return;
   if (active) deactivate(active);
   active = el; activeSince = Date.now();
   mountPlayer(el);
+  wake(el);
   const cards = [...feed.querySelectorAll('.card')];
   if (cards.indexOf(el) >= cards.length - 3) loadMore();
 }
 function deactivate(el) {
   if (active !== el) return;
   unmountPlayer(el);
+  el.classList.remove('calm');
   learn(items.get(+el.dataset.id), Date.now() - activeSince);
   active = null;
 }
@@ -309,6 +331,18 @@ $('#btnSound').onclick = () => {
   if (f) { ytCmd(f, muted ? 'mute' : 'unMute'); if (!muted) ytCmd(f, 'playVideo'); }
 };
 
+function applyView() {
+  document.body.classList.toggle('fill', view === 'fill');
+  $('#btnView').textContent = view === 'fill' ? '⤡' : '⤢';
+}
+$('#btnView').onclick = () => {
+  view = view === 'fill' ? 'fit' : 'fill';
+  LS.set('view', view);
+  applyView();
+  if (active) { unmountPlayer(active); mountPlayer(active); } // reload so controls match the mode
+};
+applyView();
+
 // ---------- filters sheet ----------
 const WIN_LABEL = { 7: 'Past week', 30: 'Past month', 90: 'Past 3 months', 0: 'Any time' };
 let draft = null;
@@ -322,12 +356,14 @@ function updateFilterLabel() {
 function paintSheet() {
   document.querySelectorAll('#windowSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.w === draft.windowDays));
   document.querySelectorAll('#releaseSeg button').forEach((b) => b.classList.toggle('on', b.dataset.r === draft.release));
+  document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.lang === (draft.lang || '')));
   $('#genreChips').innerHTML = genres.map((g) => `<button data-g="${g.id}" class="${draft.genres.includes(g.id) ? 'on' : ''}">${esc(g.name)}</button>`).join('');
   $('#hideWatched').checked = draft.hideWatched;
 }
 $('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); paintSheet(); $('#filterSheet').classList.remove('hidden'); };
 $('#windowSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.windowDays = +b.dataset.w; paintSheet(); } };
 $('#releaseSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.release = b.dataset.r; paintSheet(); } };
+$('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.lang = b.dataset.lang; paintSheet(); } };
 $('#genreChips').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
   const id = +b.dataset.g;

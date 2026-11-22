@@ -79,8 +79,38 @@ a { color: #7cc4ff; }
 .setup-box input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333; background: #16161d; color: #fff; font-size: 15px; }
 .error { color: #ff6b6b; margin-top: 10px; font-size: 14px; }
 
-/* Landscape / desktop: keep it phone-shaped */
-@media (min-width: 700px) {
+/* Tap layer + paused icon (only active in Fill mode) */
+.card .tap { display: none; position: absolute; inset: 0; z-index: 2; place-items: center; }
+.card .paused-ico { font-size: 64px; opacity: 0; transition: opacity .15s; text-shadow: 0 2px 16px #000; pointer-events: none; }
+.card.paused .paused-ico { opacity: .9; }
+
+/* Fill mode: video covers the whole card (sides cropped), info floats over it */
+body.fill .card { justify-content: flex-end; }
+body.fill .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; overflow: hidden; }
+body.fill .card .stage iframe { inset: auto; top: 50%; left: 50%; height: 100%; width: calc(100dvh * 16 / 9); min-width: 100%;
+  transform: translate(-50%, -50%); }
+body.fill .card .tap { display: grid; }
+body.fill .card .info { z-index: 3; padding-top: 80px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+  background: linear-gradient(#0000, #000b 45%, #000e); pointer-events: none; }
+body.fill .card .info .overview { pointer-events: auto; }
+body.fill .card .actions { z-index: 4; }
+body.fill .card .actions .ico { background: #0006; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+/* Calm: a few seconds in, fade everything but the title so the trailer is visible. Tap to bring it back. */
+body.fill .card .meta, body.fill .card .overview, body.fill .card .why, body.fill .card .actions, body.fill .card .info { transition: opacity .4s, background .4s; }
+body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why { opacity: 0; pointer-events: none; }
+body.fill .card.calm .info { background: linear-gradient(#0000, #0000 60%, #0008); }
+body.fill .card.calm .actions { opacity: .25; }
+
+/* Phone turned sideways: video only, full screen */
+@media (orientation: landscape) and (max-height: 520px) {
+  .card .info, .card .actions, .card .bg { display: none; }
+  .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; }
+  #topbar { opacity: .6; }
+}
+
+/* Desktop: keep it phone-shaped */
+@media (min-width: 700px) and (min-height: 521px) {
   #feed { max-width: 480px; margin: 0 auto; }
   #topbar { max-width: 480px; margin: 0 auto; }
 }
