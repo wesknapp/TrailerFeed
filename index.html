@@ -88,9 +88,11 @@
     <details class="settings">
       <summary>Settings</summary>
       <button id="resetTaste">Reset recommendations</button>
+      <label class="field">Country <small>(release dates, age ratings, streaming)</small>
+        <select id="regionSel"></select></label>
       <button id="clearHistory">Clear watch history</button>
       <button id="changeKey">Change TMDB key</button>
-      <p class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      <p class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming info from JustWatch.</p>
     </details>
   </div>
 </div>
@@ -101,9 +103,21 @@
     <div class="sheet-head"><h2>Your list</h2><button class="close" data-close="savedSheet">✕</button></div>
     <div class="seg" id="listSeg">
       <button data-l="liked" class="on">Saved</button>
+      <button data-l="soon">Coming soon</button>
       <button data-l="watched">Watched</button>
     </div>
     <div id="listBody" class="list"></div>
+  </div>
+</div>
+
+<!-- Add to calendar -->
+<div id="calSheet" class="sheet hidden">
+  <div class="sheet-inner">
+    <div class="sheet-head"><h2>Add to calendar</h2><button class="close" data-close="calSheet">✕</button></div>
+    <p id="calTitle" class="cal-title"></p>
+    <button id="calIcs" class="primary">📅 Phone calendar (Apple, Outlook…)</button>
+    <button id="calGoogle" class="secondary">Google Calendar</button>
+    <p class="tmdb-note">Adds an all-day event with a reminder the evening before. Release dates sometimes move, so it won't update itself.</p>
   </div>
 </div>
 

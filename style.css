@@ -36,6 +36,12 @@ a { color: #7cc4ff; }
 .card .actions button:active .ico { transform: scale(.88); }
 .card .actions .liked .ico { background: #e50914; }
 .card .seen { font-size: 12px; color: #ffd27a; margin-top: 8px; }
+.card .badge.now { background: #1f9d55; }
+.card .cert { border: 1px solid #ffffff66; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.card .stream { font-size: 13px; color: #b9f3c9; margin-bottom: 6px; }
+.card .chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; pointer-events: auto; }
+.card .chips-row button { background: #ffffff1f; border: 1px solid #ffffff2a; padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.card .chips-row button:active { transform: scale(.96); }
 .card .why { font-size: 12px; color: #9fd3ff; margin-top: 8px; }
 
 .status { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 16px); left: 50%; transform: translateX(-50%); z-index: 15;
@@ -67,10 +73,18 @@ a { color: #7cc4ff; }
 
 .list { margin-top: 12px; }
 .list .row { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid #ffffff10; }
+.list .noimg { width: 46px; height: 69px; border-radius: 6px; background: #222; flex: none; }
 .list img { width: 46px; height: 69px; object-fit: cover; border-radius: 6px; background: #222; }
 .list .t { font-weight: 600; }
 .list .s { font-size: 12px; color: #999; }
-.list .row a { margin-left: auto; font-size: 13px; white-space: nowrap; }
+.list .row-btns { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.list .row-btns button { font-size: 20px; padding: 4px; }
+.list .row a { font-size: 13px; white-space: nowrap; }
+.field { display: block; padding: 12px 0; border-bottom: 1px solid #ffffff12; color: #ddd; }
+.field small { color: #888; }
+.field select { display: block; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px; background: #0b0b0f; color: #fff; border: 1px solid #333; font: inherit; }
+.secondary { display: block; width: 100%; margin-top: 10px; padding: 14px; border-radius: 12px; background: #ffffff14; font-weight: 700; font-size: 16px; }
+.cal-title { color: #ccc; margin: 4px 0 6px; }
 .list .none { color: #888; padding: 20px 0; text-align: center; }
 
 /* Setup */
@@ -103,7 +117,8 @@ body.fill .card .actions .ico { background: #0006; backdrop-filter: blur(8px); -
 
 /* Calm: a few seconds in, fade everything but the title so the trailer is visible. Tap to bring it back. */
 body.fill .card .meta, body.fill .card .overview, body.fill .card .why, body.fill .card .actions, body.fill .card .info { transition: opacity .4s, background .4s; }
-body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why, body.fill .card.calm .seen { opacity: 0; pointer-events: none; }
+body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why, body.fill .card.calm .seen,
+body.fill .card.calm .stream, body.fill .card.calm .chips-row { opacity: 0; pointer-events: none; }
 body.fill .card.calm .info { background: linear-gradient(#0000, #0000 60%, #0008); }
 body.fill .card.calm .actions { opacity: .25; }
 
