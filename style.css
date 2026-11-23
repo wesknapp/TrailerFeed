@@ -83,6 +83,9 @@ a { color: #7cc4ff; }
 .field { display: block; padding: 12px 0; border-bottom: 1px solid #ffffff12; color: #ddd; }
 .field small { color: #888; }
 .field select { display: block; width: 100%; margin-top: 8px; padding: 10px; border-radius: 10px; background: #0b0b0f; color: #fff; border: 1px solid #333; font: inherit; }
+.where { display: grid; gap: 8px; }
+.where select, .where input { width: 100%; padding: 11px 12px; border-radius: 10px; background: #0b0b0f; color: #fff; border: 1px solid #333; font: inherit; font-size: 15px; }
+.where .hint { font-size: 12px; color: #888; }
 .secondary { display: block; width: 100%; margin-top: 10px; padding: 14px; border-radius: 12px; background: #ffffff14; font-weight: 700; font-size: 16px; }
 .cal-title { color: #ccc; margin: 4px 0 6px; }
 .list .none { color: #888; padding: 20px 0; text-align: center; }

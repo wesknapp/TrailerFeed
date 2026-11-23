@@ -275,7 +275,18 @@ function openCal(x) {
 }
 $('#calIcs').onclick = () => { if (calTarget) downloadIcs(calTarget); $('#calSheet').classList.add('hidden'); };
 $('#calGoogle').onclick = () => { if (calTarget) window.open(googleCalUrl(calTarget), '_blank'); $('#calSheet').classList.add('hidden'); };
-const showtimesUrl = (title) => 'https://www.google.com/search?q=' + encodeURIComponent(title + (region === 'GB' || region === 'IE' ? ' cinema times near me' : ' showtimes near me'));
+// Your cinema: a chain plus an optional town/branch, used to make the showtimes search specific.
+const CHAINS = {
+  GB: ['Odeon', 'Cineworld', 'Vue', 'Everyman', 'Picturehouse', 'Showcase', 'Curzon', 'The Light', 'Omniplex', 'Reel'],
+  IE: ['Omniplex', 'Odeon', 'Cineworld', 'IMC', 'Vue', 'Light House'],
+  US: ['AMC', 'Regal', 'Cinemark', 'Alamo Drafthouse', 'Marcus', 'Harkins'],
+  CA: ['Cineplex', 'Landmark'], AU: ['Hoyts', 'Event', 'Village', 'Reading', 'Palace'], NZ: ['Event', 'Hoyts', 'Reading'],
+};
+let cinema = LS.get('cinema', { chain: '', place: '' });
+const cinemaName = () => [cinema.chain, cinema.place].filter(Boolean).join(' ').trim();
+const timesWord = () => (region === 'GB' || region === 'IE' || region === 'AU' || region === 'NZ' ? 'cinema times' : 'showtimes');
+const showtimesUrl = (title) => 'https://www.google.com/search?q=' +
+  encodeURIComponent(`${title} ${cinemaName() ? cinemaName() + ' ' + timesWord() : timesWord() + ' near me'}`);
 
 // ---------- cards ----------
 function renderCard(m) {
@@ -302,7 +313,7 @@ function renderCard(m) {
       <p class="overview">${esc(m.overview)}</p>
       ${ri.calDate || ri.showtimes ? `<div class="chips-row">
         ${ri.calDate ? `<button data-act="cal">📅 Add to calendar</button>` : ''}
-        ${ri.showtimes ? `<button data-act="times">🎟 Find showtimes</button>` : ''}
+        ${ri.showtimes ? `<button data-act="times">🎟 ${cinemaName() ? 'Times at ' + esc(cinemaName()) : 'Find showtimes'}</button>` : ''}
       </div>` : ''}
       ${views[m.trailer.key] ? `<div class="seen">👁 Seen before${filters.hideWatched ? ' · last time it shows' : ''}</div>` : ''}
       ${m.why ? `<div class="why">✨ ${esc(m.why)}</div>` : ''}
@@ -530,7 +541,8 @@ function paintSheet() {
   $('#genreChips').innerHTML = genres.map((g) => `<button data-g="${g.id}" class="${draft.genres.includes(g.id) ? 'on' : ''}">${esc(g.name)}</button>`).join('');
   $('#hideWatched').checked = draft.hideWatched;
 }
-$('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); paintSheet(); $('#filterSheet').classList.remove('hidden'); };
+$('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); paintSheet();
+  $('#regionSel').value = region; paintCinema(region, cinema.chain); $('#placeInput').value = cinema.place; $('#filterSheet').classList.remove('hidden'); };
 $('#windowSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.windowDays = +b.dataset.w; paintSheet(); } };
 $('#releaseSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.release = b.dataset.r; paintSheet(); } };
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { setView(b.dataset.v); paintSheet(); } };
@@ -544,14 +556,25 @@ $('#genreChips').onclick = (e) => {
 $('#hideWatched').onchange = (e) => { draft.hideWatched = e.target.checked; };
 $('#applyFilters').onclick = () => {
   filters = draft; LS.set('filters', filters);
+  region = $('#regionSel').value; LS.set('region', region);
+  cinema = { chain: $('#chainSel').value === '__other' ? '' : $('#chainSel').value, place: $('#placeInput').value.trim().slice(0, 60) };
+  LS.set('cinema', cinema);
   $('#filterSheet').classList.add('hidden');
   resetFeed();
 };
 $('#resetTaste').onclick = () => { if (confirm('Forget what you like and start fresh?')) { taste = {}; disliked = {}; LS.del('taste'); LS.del('disliked'); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
 $('#clearHistory').onclick = () => { if (confirm('Clear your watched list?')) { history = {}; views = {}; countedThisSession.clear(); LS.del('history'); LS.set('views', views); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
+// Country + cinema live in the filter sheet and take effect on Apply, like the other filters.
 $('#regionSel').innerHTML = Object.entries(REGIONS).map(([c, n]) => `<option value="${c}">${flag(c)} ${n}</option>`).join('');
-$('#regionSel').value = region;
-$('#regionSel').onchange = (e) => { region = e.target.value; LS.set('region', region); $('#filterSheet').classList.add('hidden'); resetFeed(); };
+function paintCinema(rg, chain) {
+  const list = CHAINS[rg] || [];
+  const opts = ['', ...list, ...(chain && !list.includes(chain) ? [chain] : [])];
+  $('#chainSel').innerHTML = opts.map((c) => `<option value="${esc(c)}">${c ? esc(c) : 'Any cinema near me'}</option>`).join('') +
+    '<option value="__other">Other (type it below)…</option>';
+  $('#chainSel').value = chain || '';
+}
+$('#regionSel').onchange = (e) => paintCinema(e.target.value, '');
+$('#chainSel').onchange = (e) => { if (e.target.value === '__other') { $('#chainSel').value = ''; $('#placeInput').focus(); } };
 $('#changeKey').onclick = () => { $('#filterSheet').classList.add('hidden'); showSetup(); };
 
 // ---------- saved / watched sheet ----------

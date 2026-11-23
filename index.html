@@ -78,6 +78,14 @@
       <button data-lang="">Any</button>
     </div>
 
+    <h3>Your country &amp; cinema</h3>
+    <div class="where">
+      <select id="regionSel" aria-label="Country"></select>
+      <select id="chainSel" aria-label="Cinema chain"></select>
+      <input id="placeInput" type="text" placeholder="Town or branch, e.g. Manchester Printworks (optional)" autocomplete="off">
+      <p class="hint">Used for release dates, age ratings, streaming services and the 🎟 cinema times button.</p>
+    </div>
+
     <h3>Categories <small>(none = all)</small></h3>
     <div id="genreChips" class="chips"></div>
 
@@ -88,8 +96,6 @@
     <details class="settings">
       <summary>Settings</summary>
       <button id="resetTaste">Reset recommendations</button>
-      <label class="field">Country <small>(release dates, age ratings, streaming)</small>
-        <select id="regionSel"></select></label>
       <button id="clearHistory">Clear watch history</button>
       <button id="changeKey">Change TMDB key</button>
       <p class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming info from JustWatch.</p>
