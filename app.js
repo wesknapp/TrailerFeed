@@ -303,12 +303,15 @@ function wake(el) {
 window.addEventListener('message', (e) => {
   if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
   let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
-  const st = d?.info?.playerState;
   const el = active, f = el?.querySelector('iframe');
-  if (st === undefined || !f || e.source !== f.contentWindow) return;
+  if (!d?.info || !f || e.source !== f.contentWindow) return;
+  // currentTime is the trailer's own position: it stays at 0 while a YouTube ad plays, so ads don't count as watching
+  if (typeof d.info.currentTime === 'number') { played.got = true; played.t = Math.max(played.t, d.info.currentTime); }
+  const st = d.info.playerState;
   if (st === 2 && !el.classList.contains('paused')) { el.classList.add('paused'); clearTimeout(calmTimer); }
   else if (st === 1 && el.classList.contains('paused')) { el.classList.remove('paused'); wake(el); if (!muted) ytCmd(f, 'unMute'); }
 });
+let played = { got: false, t: 0 }; // how far into the trailer itself the active card got (seconds)
 function togglePause(el) {
   const f = el.querySelector('iframe'); if (!f) return;
   const paused = el.classList.toggle('paused');
@@ -319,7 +322,7 @@ function togglePause(el) {
 function activate(el) {
   if (active === el) return;
   if (active) deactivate(active);
-  active = el; activeSince = Date.now();
+  active = el; activeSince = Date.now(); played = { got: false, t: 0 };
   mountPlayer(el);
   wake(el);
   const cards = [...feed.querySelectorAll('.card')];
@@ -329,13 +332,15 @@ function deactivate(el) {
   if (active !== el) return;
   unmountPlayer(el);
   el.classList.remove('calm');
-  learn(items.get(+el.dataset.id), Date.now() - activeSince);
+  learn(items.get(+el.dataset.id), Date.now() - activeSince, played);
   active = null;
 }
 
-function learn(m, ms) {
+function learn(m, ms, pl) {
   if (!m) return;
-  const s = ms / 1000;
+  const wall = ms / 1000;
+  // Use real trailer playback when the player reports it (excludes ads/buffering); otherwise fall back to time on screen
+  const s = pl?.got ? pl.t : wall;
   if (s >= 2 && !countedThisSession.has(m.trailer.key)) {
     countedThisSession.add(m.trailer.key);
     views[m.trailer.key] = (views[m.trailer.key] || 0) + 1;
@@ -344,7 +349,7 @@ function learn(m, ms) {
   if (s >= 15) {
     history[m.id] = summary(m); LS.set('history', history);
     adjust(m, s >= 45 ? 1 : 0.5);
-  } else if (s < 2.5) {
+  } else if (wall < 2.5) { // flicked straight past
     adjust(m, -0.2);
   }
 }
