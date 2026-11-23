@@ -35,6 +35,7 @@ a { color: #7cc4ff; }
 .card .actions .ico { width: 48px; height: 48px; border-radius: 50%; background: #ffffff1f; display: grid; place-items: center; font-size: 22px; transition: transform .15s; }
 .card .actions button:active .ico { transform: scale(.88); }
 .card .actions .liked .ico { background: #e50914; }
+.card .seen { font-size: 12px; color: #ffd27a; margin-top: 8px; }
 .card .why { font-size: 12px; color: #9fd3ff; margin-top: 8px; }
 
 .status { position: fixed; bottom: calc(env(safe-area-inset-bottom) + 16px); left: 50%; transform: translateX(-50%); z-index: 15;
@@ -102,7 +103,7 @@ body.fill .card .actions .ico { background: #0006; backdrop-filter: blur(8px); -
 
 /* Calm: a few seconds in, fade everything but the title so the trailer is visible. Tap to bring it back. */
 body.fill .card .meta, body.fill .card .overview, body.fill .card .why, body.fill .card .actions, body.fill .card .info { transition: opacity .4s, background .4s; }
-body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why { opacity: 0; pointer-events: none; }
+body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why, body.fill .card.calm .seen { opacity: 0; pointer-events: none; }
 body.fill .card.calm .info { background: linear-gradient(#0000, #0000 60%, #0008); }
 body.fill .card.calm .actions { opacity: .25; }
 

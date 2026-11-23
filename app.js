@@ -18,6 +18,11 @@ let filters = Object.assign({ windowDays: 30, release: 'new', lang: 'en', genres
 if (filters.release === 'all') filters.release = 'new'; // old 'Any' setting let classic films in; reset to the default
 let taste = LS.get('taste', {});        // genreId -> weight
 let history = LS.get('history', {});    // movieId -> summary (watched trailers)
+// trailerKey -> times seen (on screen 2s+, counted once per app session). Hidden after SHOW_MAX.
+let views = LS.get('views', null);
+if (!views) { views = {}; Object.values(history).forEach((h) => { if (h.key) views[h.key] = 1; }); LS.set('views', views); }
+const SHOW_MAX = 2;
+const countedThisSession = new Set();
 let liked = LS.get('liked', {});        // movieId -> summary
 let disliked = LS.get('disliked', {});  // movieId -> 1
 let genres = LS.get('genres', []);      // [{id,name}]
@@ -167,7 +172,7 @@ async function loadMore() {
           return t ? Object.assign(m, { trailer: t }) : null;
         } catch { return null; }
       }));
-      const batch = rank(withVids.filter(Boolean).filter(inWindow).filter((m) => !(filters.hideWatched && history[m.id])));
+      const batch = rank(withVids.filter(Boolean).filter(inWindow).filter((m) => !(filters.hideWatched && (views[m.trailer.key] || 0) >= SHOW_MAX)));
       batch.forEach((m) => { renderCard(m); added++; });
     }
   } catch (e) {
@@ -217,6 +222,7 @@ function renderCard(m) {
         ${m.vote_count > 20 ? `<span>★ ${m.vote_average.toFixed(1)}</span>` : ''}
       </div>
       <p class="overview">${esc(m.overview)}</p>
+      ${views[m.trailer.key] ? `<div class="seen">👁 Seen before${filters.hideWatched ? ' · last time it shows' : ''}</div>` : ''}
       ${m.why ? `<div class="why">✨ ${esc(m.why)}</div>` : ''}
     </div>
     <div class="actions">
@@ -330,6 +336,11 @@ function deactivate(el) {
 function learn(m, ms) {
   if (!m) return;
   const s = ms / 1000;
+  if (s >= 2 && !countedThisSession.has(m.trailer.key)) {
+    countedThisSession.add(m.trailer.key);
+    views[m.trailer.key] = (views[m.trailer.key] || 0) + 1;
+    LS.set('views', views);
+  }
   if (s >= 15) {
     history[m.id] = summary(m); LS.set('history', history);
     adjust(m, s >= 45 ? 1 : 0.5);
@@ -444,7 +455,7 @@ $('#applyFilters').onclick = () => {
   resetFeed();
 };
 $('#resetTaste').onclick = () => { if (confirm('Forget what you like and start fresh?')) { taste = {}; disliked = {}; LS.del('taste'); LS.del('disliked'); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
-$('#clearHistory').onclick = () => { if (confirm('Clear your watched list?')) { history = {}; LS.del('history'); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
+$('#clearHistory').onclick = () => { if (confirm('Clear your watched list?')) { history = {}; views = {}; countedThisSession.clear(); LS.del('history'); LS.set('views', views); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
 $('#changeKey').onclick = () => { $('#filterSheet').classList.add('hidden'); showSetup(); };
 
 // ---------- saved / watched sheet ----------
