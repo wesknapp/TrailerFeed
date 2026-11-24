@@ -423,7 +423,7 @@ function mountPlayer(el) {
   const k = m.trailer.key;
   const origin = location.origin && location.origin !== 'null' ? '&origin=' + encodeURIComponent(location.origin) : '';
   const f = document.createElement('iframe');
-  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3&loop=1&playlist=${k}${origin}`;
+  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3${origin}`;
   f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   f.allowFullscreen = true;
   f.referrerPolicy = 'strict-origin-when-cross-origin';
@@ -433,7 +433,7 @@ function mountPlayer(el) {
     if (!muted) [300, 1000, 2000].forEach((t) => setTimeout(() => ytCmd(f, 'unMute'), t)); };
   stage.appendChild(f);
 }
-function unmountPlayer(el) { el.querySelector('.stage iframe')?.remove(); el.classList.remove('paused'); }
+function unmountPlayer(el) { delete el.dataset.ended; el.querySelector('.stage iframe')?.remove(); el.classList.remove('paused'); }
 
 // Fade the overlay text/buttons a few seconds into a trailer so the video is visible.
 let calmTimer = 0;
@@ -453,9 +453,19 @@ window.addEventListener('message', (e) => {
   if (d.info.duration > 0) played.dur = d.info.duration;
   if (d.info.currentTime !== undefined || d.info.duration) paintScrub(el);
   const st = d.info.playerState;
+  if (st === 0) return nextAfterEnd(el); // trailer finished
   if (st === 2 && !el.classList.contains('paused')) { el.classList.add('paused'); clearTimeout(calmTimer); }
   else if (st === 1 && el.classList.contains('paused')) { el.classList.remove('paused'); wake(el); if (!muted) ytCmd(f, 'unMute'); }
 });
+// When a trailer ends, move on to the next one (loading more if we're at the bottom of the feed).
+function nextAfterEnd(el) {
+  if (el.dataset.ended) return;
+  el.dataset.ended = '1';
+  played.t = Math.max(played.t, played.dur || 0);
+  const next = el.nextElementSibling;
+  if (next?.classList.contains('card')) next.scrollIntoView({ behavior: 'smooth' });
+  else { loadMore(); setTimeout(() => { const n = el.nextElementSibling; if (n?.classList.contains('card') && active === el) n.scrollIntoView({ behavior: 'smooth' }); }, 2500); }
+}
 let played = { got: false, t: 0, cur: 0, dur: 0 }; // how far into the trailer itself the active card got (seconds)
 function togglePause(el) {
   const f = el.querySelector('iframe'); if (!f) return;
