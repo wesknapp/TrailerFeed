@@ -300,6 +300,7 @@ function renderCard(m) {
   el.innerHTML = `
     <div class="bg" style="background-image:url('${back}')"></div>
     <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div><div class="tap"><span class="paused-ico">▶</span></div></div>
+    <div class="scrub"><div class="track"><div class="bar"></div><div class="knob"></div></div><span class="time"></span></div>
     <div class="info">
       <h2>${esc(m.title)}</h2>
       <div class="meta">
@@ -323,6 +324,7 @@ function renderCard(m) {
       <button data-act="nope"><span class="ico">👎</span>Not for me</button>
       <button data-act="yt"><span class="ico">↗</span>YouTube</button>
     </div>`;
+  bindScrub(el);
   el.querySelector('.overview').onclick = (e) => e.currentTarget.classList.toggle('open');
   el.querySelector('.stage').onclick = () => { if (active !== el) el.scrollIntoView({ behavior: 'smooth' }); };
   // Fill mode: a transparent layer over the video keeps swipes working and makes a tap pause/play.
@@ -369,8 +371,50 @@ function nope(m, el) {
 }
 
 // ---------- playback ----------
-function ytCmd(iframe, func) {
-  try { iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*'); } catch {}
+function ytCmd(iframe, func, args = []) {
+  try { iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {}
+}
+
+// ---------- seek bar ----------
+// The player reports currentTime/duration; we draw our own bar (YouTube's controls are hidden) and seek with seekTo.
+let scrubbing = false;
+const fmtT = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function paintScrub(el, frac) {
+  const sc = el?.querySelector('.scrub'); if (!sc) return;
+  if (frac === undefined) {
+    if (scrubbing || !played.dur) return;
+    frac = played.cur / played.dur;
+  }
+  sc.classList.toggle('ready', !!played.dur);
+  sc.style.setProperty('--p', Math.max(0, Math.min(1, frac)));
+}
+function seekBy(sec) {
+  const f = active?.querySelector('iframe'); if (!f || !played.dur) return;
+  played.cur = clamp(played.cur + sec, 0, played.dur - 0.5);
+  ytCmd(f, 'seekTo', [played.cur, true]); paintScrub(active); wake(active);
+}
+function bindScrub(el) {
+  const sc = el.querySelector('.scrub'), track = sc.querySelector('.track');
+  let frac = 0;
+  const at = (e) => { const r = track.getBoundingClientRect(); frac = clamp((e.clientX - r.left) / r.width, 0, 1);
+    paintScrub(el, frac); sc.querySelector('.time').textContent = fmtT(frac * played.dur) + ' / ' + fmtT(played.dur); };
+  sc.addEventListener('pointerdown', (e) => {
+    if (active !== el || !played.dur) return;
+    e.preventDefault(); e.stopPropagation();
+    try { sc.setPointerCapture(e.pointerId); } catch {}
+    scrubbing = true; sc.classList.add('drag'); clearTimeout(calmTimer); el.classList.remove('calm'); at(e);
+  });
+  sc.addEventListener('pointermove', (e) => { if (scrubbing && active === el) at(e); });
+  const end = () => {
+    if (!scrubbing) return;
+    scrubbing = false; sc.classList.remove('drag');
+    const f = el.querySelector('iframe');
+    if (f && played.dur) { played.cur = frac * played.dur; ytCmd(f, 'seekTo', [played.cur, true]); }
+    if (!el.classList.contains('paused')) wake(el);
+  };
+  sc.addEventListener('pointerup', end);
+  sc.addEventListener('pointercancel', end);
+  sc.addEventListener('click', (e) => e.stopPropagation());
 }
 function mountPlayer(el) {
   const m = items.get(+el.dataset.id); if (!m) return;
@@ -405,12 +449,14 @@ window.addEventListener('message', (e) => {
   const el = active, f = el?.querySelector('iframe');
   if (!d?.info || !f || e.source !== f.contentWindow) return;
   // currentTime is the trailer's own position: it stays at 0 while a YouTube ad plays, so ads don't count as watching
-  if (typeof d.info.currentTime === 'number') { played.got = true; played.t = Math.max(played.t, d.info.currentTime); }
+  if (typeof d.info.currentTime === 'number') { played.got = true; played.t = Math.max(played.t, d.info.currentTime); played.cur = d.info.currentTime; }
+  if (d.info.duration > 0) played.dur = d.info.duration;
+  if (d.info.currentTime !== undefined || d.info.duration) paintScrub(el);
   const st = d.info.playerState;
   if (st === 2 && !el.classList.contains('paused')) { el.classList.add('paused'); clearTimeout(calmTimer); }
   else if (st === 1 && el.classList.contains('paused')) { el.classList.remove('paused'); wake(el); if (!muted) ytCmd(f, 'unMute'); }
 });
-let played = { got: false, t: 0 }; // how far into the trailer itself the active card got (seconds)
+let played = { got: false, t: 0, cur: 0, dur: 0 }; // how far into the trailer itself the active card got (seconds)
 function togglePause(el) {
   const f = el.querySelector('iframe'); if (!f) return;
   const paused = el.classList.toggle('paused');
@@ -421,7 +467,7 @@ function togglePause(el) {
 function activate(el) {
   if (active === el) return;
   if (active) deactivate(active);
-  active = el; activeSince = Date.now(); played = { got: false, t: 0 };
+  active = el; activeSince = Date.now(); played = { got: false, t: 0, cur: 0, dur: 0 }; scrubbing = false; paintScrub(el, 0);
   mountPlayer(el);
   wake(el);
   const cards = [...feed.querySelectorAll('.card')];
@@ -502,6 +548,8 @@ document.addEventListener('keydown', (e) => {
   if (k === 'arrowdown' || k === 'j' || k === 'pagedown') go(1);
   else if (k === 'arrowup' || k === 'k' || k === 'pageup') go(-1);
   else if (k === ' ' && active) togglePause(active);
+  else if (k === 'arrowright' || k === 'l') seekBy(5);
+  else if (k === 'arrowleft' || k === 'h') seekBy(-5);
   else if (k === 'm') toggleSound();
   else if (k === 'f') toggleFullscreen();
   else if (k === 'v') $('#btnView').click();

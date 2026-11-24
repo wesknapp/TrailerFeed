@@ -99,6 +99,21 @@ a { color: #7cc4ff; }
 .setup-box input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333; background: #16161d; color: #fff; font-size: 15px; }
 .error { color: #ff6b6b; margin-top: 10px; font-size: 14px; }
 
+/* Seek bar (our own; YouTube's controls are hidden) */
+.card .scrub { --p: 0; position: relative; z-index: 4; height: 26px; display: flex; align-items: center; padding: 0 14px;
+  touch-action: none; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.card .scrub.ready { opacity: 1; pointer-events: auto; }
+.card .scrub .track { position: relative; flex: 1; height: 3px; background: #ffffff38; border-radius: 3px; transition: height .15s; }
+.card .scrub .bar { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p) * 100%); background: #e50914; border-radius: 3px; }
+.card .scrub .knob { position: absolute; top: 50%; left: calc(var(--p) * 100%); width: 13px; height: 13px; border-radius: 50%;
+  background: #fff; transform: translate(-50%, -50%) scale(.8); box-shadow: 0 1px 4px #0008; transition: transform .15s, opacity .25s; }
+.card.calm .scrub .knob { opacity: 0; }
+.card .scrub.drag .track, .card .scrub:hover .track { height: 6px; }
+.card .scrub.drag .knob { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+.card .scrub .time { display: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #000c;
+  padding: 4px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card .scrub.drag .time { display: block; }
+
 /* Tap layer + paused icon (only active in Fill mode) */
 .card .tap { display: grid; position: absolute; inset: 0; z-index: 2; place-items: center; }
 .card .paused-ico { font-size: 64px; opacity: 0; transition: opacity .15s; text-shadow: 0 2px 16px #000; pointer-events: none; }
@@ -112,7 +127,8 @@ body.fill .card { justify-content: flex-end; }
 body.fill .card .stage, body.fill.fs .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; transform: none; margin: 0; overflow: hidden; }
 body.fill .card .stage iframe { top: 50%; left: 50%; width: max(100%, calc(100dvh * 16 / 9));
   height: calc(max(100dvh, 100vw * 9 / 16) + 200px); transform: translate(-50%, -50%); }
-body.fill .card .info { z-index: 3; padding-top: 80px; padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+body.fill .card .scrub { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 4px); width: auto; margin: 0; }
+body.fill .card .info { z-index: 3; padding-top: 80px; padding-bottom: calc(env(safe-area-inset-bottom) + 34px);
   background: linear-gradient(#0000, #000b 45%, #000e); pointer-events: none; }
 body.fill .card .info .overview { pointer-events: auto; }
 body.fill .card .actions { z-index: 4; }
@@ -128,6 +144,7 @@ body.fill .card.calm .actions { opacity: .25; }
 /* Phone turned sideways: video only, full screen */
 @media (orientation: landscape) and (max-height: 520px) {
   .card .info, .card .actions, .card .bg { display: none; }
+  .card .scrub { position: absolute; left: 0; right: 0; bottom: 4px; width: auto; margin: 0; }
   .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; }
   #topbar { opacity: .6; }
 }
@@ -135,6 +152,7 @@ body.fill .card.calm .actions { opacity: .25; }
 /* Browser full screen in landscape (PC, Android): video only */
 @media (orientation: landscape) {
   body.fs .card .info, body.fs .card .actions, body.fs .card .bg { display: none; }
+  body.fs .card .scrub { position: absolute; left: 0; right: 0; bottom: 6px; width: auto; margin: 0; }
   body.fs .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; border-radius: 0; box-shadow: none; }
   body.fs #topbar { opacity: .35; transition: opacity .2s; }
   body.fs #topbar:hover { opacity: 1; }
@@ -142,7 +160,8 @@ body.fill .card.calm .actions { opacity: .25; }
 
 /* PC / tablet: big centred video with the details underneath */
 @media (min-width: 700px) and (min-height: 521px) {
-  .card .stage, .card .info { width: min(calc(100% - 180px), calc((100dvh - 240px) * 16 / 9)); margin: 0 auto; }
+  .card .stage, .card .info, .card .scrub { width: min(calc(100% - 180px), calc((100dvh - 240px) * 16 / 9)); margin: 0 auto; }
+  .card .scrub { padding: 0; margin-top: 4px; }
   .card .stage { border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px #000c; }
   .card .info { padding: 18px 0 0; }
   .card h2 { font-size: 26px; }
