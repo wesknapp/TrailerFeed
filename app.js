@@ -14,7 +14,7 @@ const LS = {
 };
 
 let apiKey = LS.get('key', '');
-let filters = Object.assign({ windowDays: 30, release: 'new', lang: 'en', genres: [], hideWatched: true }, LS.get('filters', {}));
+let filters = Object.assign({ sort: 'rec', windowDays: 30, release: 'new', lang: 'en', genres: [], hideWatched: true }, LS.get('filters', {}));
 if (filters.release === 'all') filters.release = 'new'; // old 'Any' setting let classic films in; reset to the default
 let taste = LS.get('taste', {});        // genreId -> weight
 let history = LS.get('history', {});    // movieId -> summary (watched trailers)
@@ -105,7 +105,10 @@ $('#keySave').onclick = async () => {
 // ---------- feed loading ----------
 function discoverParams() {
   const now = Date.now();
-  const p = { sort_by: 'popularity.desc', include_adult: 'false', include_video: 'false', language: 'en-US', page };
+  // TMDB does the ordering across all pages; 'rec' and 'trailer' are then re-ordered within each batch (see rank)
+  const SORT_BY = { rec: 'popularity.desc', popular: 'popularity.desc', oldest: 'primary_release_date.asc', newest: 'primary_release_date.desc',
+    trailer: 'popularity.desc', rated: 'vote_average.desc' };
+  const p = { sort_by: SORT_BY[filters.sort] || 'popularity.desc', include_adult: 'false', include_video: 'false', language: 'en-US', page };
   // Movie release date: 'new' = out in the last 3 months or coming soon, 'year' = last 12 months or coming soon,
   // 'upcoming' = not out yet, 'any' = every year (old films whose trailers were re-uploaded can show up)
   const back = { new: 90, year: 365 }[filters.release];
@@ -116,6 +119,7 @@ function discoverParams() {
     p['primary_release_date.gte'] = ymd(new Date(now + DAY));
     p['primary_release_date.lte'] = ymd(new Date(now + 540 * DAY));
   }
+  if (filters.sort === 'rated') p['vote_count.gte'] = 50; // skip films rated 10/10 by two people
   if (filters.lang) p.with_original_language = filters.lang;
   if (filters.genres.length) p.with_genres = filters.genres.join('|'); // OR
   return p;
@@ -149,6 +153,8 @@ function tasteScore(m) {
 }
 
 function rank(batch) {
+  if (filters.sort === 'trailer') return batch.sort((a, b) => new Date(b.trailer.published_at) - new Date(a.trailer.published_at));
+  if (filters.sort !== 'rec') return batch; // keep TMDB's order exactly
   // keep TMDB popularity order as the baseline, nudge by learned taste
   return batch
     .map((m, i) => ({ m, s: tasteScore(m) - i * 0.15 }))
@@ -586,13 +592,16 @@ const REL_LABEL = { new: 'New', year: 'Past year', upcoming: 'Coming soon', any:
 let draft = null;
 
 function updateFilterLabel() {
+  const SORT_LABEL = { popular: 'Popular', oldest: 'Oldest first', newest: 'Newest first', trailer: 'New trailers', rated: 'Top rated' };
   let t = REL_LABEL[filters.release] || 'New';
+  if (SORT_LABEL[filters.sort]) t += ' · ' + SORT_LABEL[filters.sort];
   if (filters.genres.length === 1) t += ' · ' + (genreName(filters.genres[0]) || '');
   else if (filters.genres.length > 1) t += ' · ' + filters.genres.length + ' genres';
   $('#filterLabel').textContent = t;
 }
 function paintSheet() {
   document.querySelectorAll('#windowSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.w === draft.windowDays));
+  document.querySelectorAll('#sortSeg button').forEach((b) => b.classList.toggle('on', b.dataset.s === (draft.sort || 'rec')));
   document.querySelectorAll('#releaseSeg button').forEach((b) => b.classList.toggle('on', b.dataset.r === draft.release));
   document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === view));
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.lang === (draft.lang || '')));
@@ -602,6 +611,7 @@ function paintSheet() {
 $('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); paintSheet();
   $('#regionSel').value = region; paintCinema(region, cinema.chain); $('#placeInput').value = cinema.place; $('#filterSheet').classList.remove('hidden'); };
 $('#windowSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.windowDays = +b.dataset.w; paintSheet(); } };
+$('#sortSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.sort = b.dataset.s; paintSheet(); } };
 $('#releaseSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.release = b.dataset.r; paintSheet(); } };
 $('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { setView(b.dataset.v); paintSheet(); } };
 $('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.lang = b.dataset.lang; paintSheet(); } };
