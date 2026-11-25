@@ -36,7 +36,6 @@ function detectRegion() {
 }
 let region = LS.get('region', '') || detectRegion();
 const flag = (cc) => cc.replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)));
-let view = LS.get('view2', 'fit'); // 'fit' = whole 16:9 frame, 'fill' = zoom to cover the screen (crops the sides)
 
 const $ = (s) => document.querySelector(s);
 const feed = $('#feed');
@@ -69,11 +68,22 @@ function fmtDate(r) {
   return d.toLocaleDateString(undefined, opts);
 }
 
+// If config.js names a TrailerFeed server, everyone uses that (no TMDB key needed on the phone).
+// Without one, each person pastes their own TMDB key, as before.
+const API_BASE = String(window.TRAILERFEED_CONFIG?.apiBase || '').trim().replace(/\/+$/, '');
+const SHARED = !!API_BASE;
+const ready = () => SHARED || !!apiKey;
+
 async function tmdb(path, params = {}, key = apiKey) {
-  const url = new URL(API + path);
   const headers = { accept: 'application/json' };
-  if (key.startsWith('eyJ')) headers.Authorization = 'Bearer ' + key; // v4 read token
-  else url.searchParams.set('api_key', key);                            // v3 key
+  let url;
+  if (SHARED) {
+    url = new URL(API_BASE + '/3' + path);
+  } else {
+    url = new URL(API + path);
+    if (key.startsWith('eyJ')) headers.Authorization = 'Bearer ' + key; // v4 read token
+    else url.searchParams.set('api_key', key);                            // v3 key
+  }
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') url.searchParams.set(k, v);
   const res = await fetch(url, { headers });
   if (!res.ok) { const e = new Error('TMDB ' + res.status); e.status = res.status; throw e; }
@@ -167,7 +177,7 @@ function rank(batch) {
 }
 
 async function loadMore() {
-  if (loading || exhausted || !apiKey) return;
+  if (loading || exhausted || !ready()) return;
   loading = true;
   status('Finding trailers…');
   const hadCards = feed.querySelectorAll('.card').length;
@@ -192,7 +202,8 @@ async function loadMore() {
       batch.forEach((m) => { renderCard(m); added++; });
     }
   } catch (e) {
-    if (e.status === 401) { showSetup('Your TMDB key stopped working — paste it again.'); }
+    if (e.status === 401 && !SHARED) { showSetup('Your TMDB key stopped working — paste it again.'); }
+    else if (SHARED) status(e.status === 429 ? 'Lots of requests right now. Try again in a moment.' : "Couldn't load trailers. Check your connection and try again.");
     else status("Couldn't load: " + e.message);
     loading = false;
     return;
@@ -305,7 +316,7 @@ function renderCard(m) {
   const g = (m.genre_ids || []).map(genreName).filter(Boolean).slice(0, 3).join(' · ');
   el.innerHTML = `
     <div class="bg" style="background-image:url('${back}')"></div>
-    <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div><div class="tap"><span class="paused-ico">▶</span></div></div>
+    <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div></div>
     <div class="scrub"><div class="track"><div class="bar"></div><div class="knob"></div></div><span class="time"></span></div>
     <div class="info">
       <h2>${esc(m.title)}</h2>
@@ -316,7 +327,7 @@ function renderCard(m) {
         ${g ? `<span>${esc(g)}</span>` : ''}
         ${m.vote_count > 20 ? `<span>★ ${m.vote_average.toFixed(1)}</span>` : ''}
       </div>
-      ${ri.streaming.length ? `<div class="stream">📺 On ${esc(ri.streaming.join(', '))}</div>` : ri.canRent && !ri.soon ? `<div class="stream">📺 Rent or buy digitally</div>` : ''}
+      ${ri.streaming.length ? `<div class="stream">📺 On ${esc(ri.streaming.join(', '))} <small>· JustWatch</small></div>` : ri.canRent && !ri.soon ? `<div class="stream">📺 Rent or buy digitally</div>` : ''}
       <p class="overview">${esc(m.overview)}</p>
       ${ri.calDate || ri.showtimes ? `<div class="chips-row">
         ${ri.calDate ? `<button data-act="cal">📅 Add to calendar</button>` : ''}
@@ -333,13 +344,6 @@ function renderCard(m) {
   bindScrub(el);
   el.querySelector('.overview').onclick = (e) => e.currentTarget.classList.toggle('open');
   el.querySelector('.stage').onclick = () => { if (active !== el) el.scrollIntoView({ behavior: 'smooth' }); };
-  // Fill mode: a transparent layer over the video keeps swipes working and makes a tap pause/play.
-  el.querySelector('.tap').onclick = (e) => {
-    e.stopPropagation();
-    if (active !== el) return el.scrollIntoView({ behavior: 'smooth' });
-    if (el.classList.contains('calm')) return wake(el);
-    togglePause(el);
-  };
   el.querySelector('.chips-row')?.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.act === 'cal') openCal({ id: m.id, title: m.title, key: m.trailer.key, calDate: ri.calDate, calKind: ri.calKind });
@@ -568,24 +572,10 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'arrowleft' || k === 'h') seekBy(-5);
   else if (k === 'm') toggleSound();
   else if (k === 'f') toggleFullscreen();
-  else if (k === 'v') $('#btnView').click();
   else return;
   e.preventDefault();
 });
 
-function applyView() {
-  document.body.classList.toggle('fill', view === 'fill');
-  $('#btnView').textContent = view === 'fill' ? '⤡' : '⤢';
-}
-$('#btnView').onclick = () => {
-  setView(view === 'fill' ? 'fit' : 'fill');
-};
-function setView(v) {
-  view = v;
-  LS.set('view2', view);
-  applyView();
-};
-applyView();
 
 // ---------- filters sheet ----------
 const REL_LABEL = { new: 'New', year: 'Past year', upcoming: 'Coming soon', any: 'All years' };
@@ -603,7 +593,6 @@ function paintSheet() {
   document.querySelectorAll('#windowSeg button').forEach((b) => b.classList.toggle('on', +b.dataset.w === draft.windowDays));
   document.querySelectorAll('#sortSeg button').forEach((b) => b.classList.toggle('on', b.dataset.s === (draft.sort || 'rec')));
   document.querySelectorAll('#releaseSeg button').forEach((b) => b.classList.toggle('on', b.dataset.r === draft.release));
-  document.querySelectorAll('#viewSeg button').forEach((b) => b.classList.toggle('on', b.dataset.v === view));
   document.querySelectorAll('#langSeg button').forEach((b) => b.classList.toggle('on', b.dataset.lang === (draft.lang || '')));
   $('#genreChips').innerHTML = genres.map((g) => `<button data-g="${g.id}" class="${draft.genres.includes(g.id) ? 'on' : ''}">${esc(g.name)}</button>`).join('');
   $('#hideWatched').checked = draft.hideWatched;
@@ -613,7 +602,6 @@ $('#btnFilters').onclick = () => { draft = JSON.parse(JSON.stringify(filters)); 
 $('#windowSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.windowDays = +b.dataset.w; paintSheet(); } };
 $('#sortSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.sort = b.dataset.s; paintSheet(); } };
 $('#releaseSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.release = b.dataset.r; paintSheet(); } };
-$('#viewSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { setView(b.dataset.v); paintSheet(); } };
 $('#langSeg').onclick = (e) => { const b = e.target.closest('button'); if (b) { draft.lang = b.dataset.lang; paintSheet(); } };
 $('#genreChips').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -681,10 +669,11 @@ document.querySelectorAll('.sheet').forEach((s) => s.addEventListener('click', (
 (async function boot() {
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   updateFilterLabel();
-  if (!apiKey) return showSetup();
+  if (SHARED) $('#changeKey').classList.add('hidden');
+  if (!ready()) return showSetup();
   if (!genres.length) {
     try { genres = (await tmdb('/genre/movie/list', { language: 'en-US' })).genres; LS.set('genres', genres); }
-    catch (e) { if (e.status === 401) return showSetup('Your TMDB key stopped working — paste it again.'); }
+    catch (e) { if (e.status === 401 && !SHARED) return showSetup('Your TMDB key stopped working — paste it again.'); }
   }
   resetFeed();
 })();

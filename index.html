@@ -28,6 +28,7 @@
     <input id="keyInput" type="text" placeholder="Paste token or key" autocomplete="off" autocapitalize="off" spellcheck="false">
     <button id="keySave" class="primary">Start watching</button>
     <p id="keyError" class="error"></p>
+    <p class="credits"><a href="privacy.html">About &amp; privacy</a></p>
   </div>
 </div>
 
@@ -35,7 +36,6 @@
 <header id="topbar">
   <button id="btnFilters" class="pill" aria-label="Filters">⚙︎ <span id="filterLabel">Past month</span></button>
   <div class="spacer"></div>
-  <button id="btnView" class="icon-btn" aria-label="Fit or fill video" title="Fit / fill (V)">⤢</button>
   <button id="btnFull" class="icon-btn" aria-label="Full screen" title="Full screen (F)">⛶</button>
   <button id="btnSaved" class="icon-btn" aria-label="Saved">♥</button>
   <button id="btnSound" class="icon-btn" aria-label="Sound">🔇</button>
@@ -76,12 +76,6 @@
       <button data-w="0">Any time</button>
     </div>
 
-    <h3>Video size <small>(changes right away)</small></h3>
-    <div id="viewSeg" class="seg">
-      <button data-v="fit">Whole picture</button>
-      <button data-v="fill">Fill screen (crops sides)</button>
-    </div>
-
     <h3>Language</h3>
     <div id="langSeg" class="seg">
       <button data-lang="en">English</button>
@@ -108,8 +102,10 @@
       <button id="resetTaste">Reset recommendations</button>
       <button id="clearHistory">Clear watch history</button>
       <button id="changeKey">Change TMDB key</button>
-      <p class="tmdb-note">This product uses the TMDB API but is not endorsed or certified by TMDB. Streaming info from JustWatch.</p>
     </details>
+    <p class="credits">Movie data &amp; images: <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a> ·
+      Streaming info: <a href="https://www.justwatch.com/" target="_blank" rel="noopener">JustWatch</a> · Trailers: YouTube<br>
+      This product uses the TMDB API but is not endorsed or certified by TMDB. · <a href="privacy.html">About &amp; privacy</a></p>
   </div>
 </div>
 
@@ -137,6 +133,7 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

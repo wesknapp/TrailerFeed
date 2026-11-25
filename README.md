@@ -2,6 +2,13 @@
 
 A swipeable, Reels-style feed of fresh movie trailers. No accounts and no server. Your TMDB key, saved list, watch history and taste profile are all stored in your browser's localStorage.
 
+## Shared server (recommended for a public app)
+The app can use a small free Cloudflare Worker that holds one TMDB key for everyone, so users never need their own.
+Setup steps are in [`worker/README.md`](worker/README.md). Once it's running, put its address in `config.js`.
+With `apiBase` left empty in `config.js`, the app falls back to asking each person for their own TMDB key.
+
+Privacy and credits are on [`privacy.html`](privacy.html), which is linked from the app.
+
 ## Put it on GitHub Pages
 1. Create a new **public** repo (e.g. `trailerfeed`). Pages is free for public repos.
 2. Upload every file in this folder (including `icons/`) to the repo root.
@@ -12,7 +19,7 @@ A swipeable, Reels-style feed of fresh movie trailers. No accounts and no server
 - **iPhone:** open the link in Safari → Share → **Add to Home Screen**.
 - **Android:** open the link in Chrome → ⋮ → **Install app** / **Add to Home screen**.
 
-On first launch, paste your TMDB **API Read Access Token** (themoviedb.org → Settings → API). The token stays on the phone and is never committed to the repo.
+Without the shared server, on first launch each person pastes their own TMDB **API Read Access Token** (themoviedb.org → Settings → API). It stays on their phone and is never committed to the repo.
 
 ## How it works
 - Pulls popular new and upcoming movies from TMDB `discover`, then finds each movie's latest YouTube trailer through `/movie/{id}/videos`.

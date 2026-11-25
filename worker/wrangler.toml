@@ -1,0 +1,10 @@
+# Only needed if you deploy from the command line with `npx wrangler deploy`.
+# Deploying by pasting worker.js into the Cloudflare dashboard (see worker/README.md) doesn't use this file.
+name = "trailerfeed-api"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://wesknapp.github.io"
+
+# The TMDB token is a secret: set it with `npx wrangler secret put TMDB_TOKEN` (never put it in this file).

@@ -19,9 +19,7 @@ a { color: #7cc4ff; }
   display: flex; flex-direction: column; justify-content: center; }
 .card .bg { position: absolute; inset: 0; background-size: cover; background-position: center; filter: blur(28px) brightness(.45); transform: scale(1.2); }
 .card .stage { position: relative; width: 100%; aspect-ratio: 16/9; background: #000 center/cover no-repeat; z-index: 1; overflow: hidden; }
-/* The player is made 200px taller than the box: YouTube centres the video and puts its title bar, logo and
-   controls in the black bars above/below, which the box then trims off. The video picture itself isn't cropped. */
-.card .stage iframe { position: absolute; left: 0; top: -100px; width: 100%; height: calc(100% + 200px); border: 0; }
+.card .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .card .stage .play-hint { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; opacity: .85; text-shadow: 0 2px 12px #000; }
 .card .info { position: relative; z-index: 1; padding: 18px 76px 0 16px; }
 .card h2 { font-size: 22px; line-height: 1.2; margin-bottom: 6px; }
@@ -38,6 +36,7 @@ a { color: #7cc4ff; }
 .card .seen { font-size: 12px; color: #ffd27a; margin-top: 8px; }
 .card .badge.now { background: #1f9d55; }
 .card .cert { border: 1px solid #ffffff66; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+.card .stream small { color: #8a8a96; font-size: 11px; }
 .card .stream { font-size: 13px; color: #b9f3c9; margin-bottom: 6px; }
 .card .chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; pointer-events: auto; }
 .card .chips-row button { background: #ffffff1f; border: 1px solid #ffffff2a; padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
@@ -69,6 +68,8 @@ a { color: #7cc4ff; }
 .settings { margin-top: 22px; color: #aaa; }
 .settings summary { padding: 6px 0; }
 .settings button { display: block; width: 100%; text-align: left; padding: 12px 0; border-bottom: 1px solid #ffffff12; color: #ddd; }
+.credits { font-size: 12px; color: #888; margin-top: 18px; line-height: 1.6; }
+.credits a { color: #aaa; }
 .tmdb-note { font-size: 11px; margin-top: 12px; color: #777; }
 
 .list { margin-top: 12px; }
@@ -99,7 +100,7 @@ a { color: #7cc4ff; }
 .setup-box input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #333; background: #16161d; color: #fff; font-size: 15px; }
 .error { color: #ff6b6b; margin-top: 10px; font-size: 14px; }
 
-/* Seek bar (our own; YouTube's controls are hidden) */
+/* Seek bar: our own, drawn under the player (YouTube's controls are switched off with its controls=0 setting) */
 .card .scrub { --p: 0; position: relative; z-index: 4; height: 26px; display: flex; align-items: center; padding: 0 14px;
   touch-action: none; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .25s; }
 .card .scrub.ready { opacity: 1; pointer-events: auto; }
@@ -114,58 +115,29 @@ a { color: #7cc4ff; }
   padding: 4px 10px; border-radius: 8px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .card .scrub.drag .time { display: block; }
 
-/* Tap layer + paused icon (only active in Fill mode) */
-.card .tap { display: grid; position: absolute; inset: 0; z-index: 2; place-items: center; }
-.card .paused-ico { font-size: 64px; opacity: 0; transition: opacity .15s; text-shadow: 0 2px 16px #000; pointer-events: none; }
-.card.paused .paused-ico { opacity: .9; }
-/* While paused, taps go straight to YouTube so resuming counts as a real tap on the video (helps iPhone sound). */
-.card.paused .tap { pointer-events: none; }
-.card.paused .play-hint { display: none; }
-
-/* Fill mode: video covers the whole card (sides cropped), info floats over it */
-body.fill .card { justify-content: flex-end; }
-body.fill .card .stage, body.fill.fs .card .stage { position: absolute; inset: 0; width: auto; aspect-ratio: auto; transform: none; margin: 0; overflow: hidden; }
-body.fill .card .stage iframe { top: 50%; left: 50%; width: max(100%, calc(100dvh * 16 / 9));
-  height: calc(max(100dvh, 100vw * 9 / 16) + 200px); transform: translate(-50%, -50%); }
-body.fill .card .scrub { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom) + 4px); width: auto; margin: 0; }
-body.fill .card .info { z-index: 3; padding-top: 80px; padding-bottom: calc(env(safe-area-inset-bottom) + 34px);
-  background: linear-gradient(#0000, #000b 45%, #000e); pointer-events: none; }
-body.fill .card .info .overview { pointer-events: auto; }
-body.fill .card .actions { z-index: 4; }
-body.fill .card .actions .ico { background: #0006; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-
-/* Calm: a few seconds in, fade everything but the title so the trailer is visible. Tap to bring it back. */
-body.fill .card .meta, body.fill .card .overview, body.fill .card .why, body.fill .card .actions, body.fill .card .info { transition: opacity .4s, background .4s; }
-body.fill .card.calm .meta, body.fill .card.calm .overview, body.fill .card.calm .why, body.fill .card.calm .seen,
-body.fill .card.calm .stream, body.fill .card.calm .chips-row { opacity: 0; pointer-events: none; }
-body.fill .card.calm .info { background: linear-gradient(#0000, #0000 60%, #0008); }
-body.fill .card.calm .actions { opacity: .25; }
-
-/* Phone turned sideways: video only, full screen */
+/* Phone turned sideways / browser full screen: video only. The player is kept clear of the top bar and the
+   seek bar so nothing sits on top of it (YouTube's rules don't allow covering the player). */
 @media (orientation: landscape) and (max-height: 520px) {
   .card .info, .card .actions, .card .bg { display: none; }
-  .card .scrub { position: absolute; left: 0; right: 0; bottom: 4px; width: auto; margin: 0; }
-  .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; }
-  #topbar { opacity: .6; }
+  .card .stage { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); margin: 0;
+    width: min(100vw, calc((100dvh - 94px) * 16 / 9)); aspect-ratio: 16/9; }
+  .card .scrub { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2px; margin: 0;
+    width: min(100vw, calc((100dvh - 94px) * 16 / 9)); }
 }
-
-/* Browser full screen in landscape (PC, Android): video only */
 @media (orientation: landscape) {
   body.fs .card .info, body.fs .card .actions, body.fs .card .bg { display: none; }
-  body.fs .card .scrub { position: absolute; left: 0; right: 0; bottom: 6px; width: auto; margin: 0; }
-  body.fs .card .stage { position: absolute; inset: auto; top: 50%; left: 50%; width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16/9; transform: translate(-50%, -50%); margin: 0; border-radius: 0; box-shadow: none; }
-  body.fs #topbar { opacity: .35; transition: opacity .2s; }
-  body.fs #topbar:hover { opacity: 1; }
+  body.fs .card .stage { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); margin: 0;
+    width: min(100vw, calc((100dvh - 98px) * 16 / 9)); aspect-ratio: 16/9; border-radius: 0; box-shadow: none; }
+  body.fs .card .scrub { position: absolute; left: 50%; transform: translateX(-50%); bottom: 4px; margin: 0;
+    width: min(100vw, calc((100dvh - 98px) * 16 / 9)); }
 }
 
 /* PC / tablet: big centred video with the details underneath */
 @media (min-width: 700px) and (min-height: 521px) {
   .card .stage, .card .info, .card .scrub { width: min(calc(100% - 180px), calc((100dvh - 240px) * 16 / 9)); margin: 0 auto; }
   .card .scrub { padding: 0; margin-top: 4px; }
-  .card .stage { border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px #000c; }
+  .card .stage { box-shadow: 0 20px 60px #000c; }
   .card .info { padding: 18px 0 0; }
   .card h2 { font-size: 26px; }
   .card .actions { right: 28px; bottom: auto; top: 50%; transform: translateY(-50%); }
-  body.fill .card .stage { border-radius: 0; margin: 0; }
-  body.fill .card .info { padding-left: 24px; padding-right: 24px; }
 }
