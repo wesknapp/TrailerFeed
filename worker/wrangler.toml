@@ -5,6 +5,8 @@ main = "worker.js"
 compatibility_date = "2024-11-01"
 
 [vars]
-ALLOWED_ORIGINS = "https://wesknapp.github.io"
+# Sites allowed to use this server. Note: each automatic deploy from GitHub resets this from here,
+# so change it in this file rather than only in the Cloudflare dashboard.
+ALLOWED_ORIGINS = "https://wesknapp.github.io,https://trailerfeed.co.uk,https://www.trailerfeed.co.uk"
 
 # The TMDB token is a secret: set it with `npx wrangler secret put TMDB_TOKEN` (never put it in this file).
