@@ -1,5 +1,5 @@
 // Caches the app shell so it opens instantly; TMDB/YouTube always go to the network.
-const CACHE = 'trailerfeed-v14';
+const CACHE = 'trailerfeed-v15';
 const SHELL = ['./', 'index.html', 'style.css', 'config.js', 'app.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {

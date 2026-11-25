@@ -8,7 +8,7 @@ It keeps your TMDB key secret, only forwards the requests the app needs, caches 
 ### 1. Create the Worker
 1. Log in at **dash.cloudflare.com** → left menu **Workers & Pages** (under *Compute*).
 2. **Create** → **Create Worker** (or *Start with Hello World*).
-3. Name it `trailerfeed-api` → **Deploy**.
+3. Name it `trailerfeed` → **Deploy**.
 4. Click **Edit code**. Delete everything in the editor, paste the whole of [`worker.js`](worker.js), then click **Deploy**.
 
 ### 2. Add your TMDB key as a secret
@@ -26,7 +26,7 @@ This is the site's address *without* the `/TrailerFeed` part. If you later use y
 `https://wesknapp.github.io,https://trailerfeed.example.com`
 
 ### 4. Check it works
-Copy the Worker's address from its overview page (something like `https://trailerfeed-api.YOURNAME.workers.dev`)
+Copy the Worker's address from its overview page (something like `https://trailerfeed.YOURNAME.workers.dev`)
 and open it with `/health` on the end. You should see:
 
 ```
@@ -40,7 +40,7 @@ In the GitHub repo, open **`config.js`** → pencil icon (Edit) → put your Wor
 
 ```js
 window.TRAILERFEED_CONFIG = {
-  apiBase: 'https://trailerfeed-api.YOURNAME.workers.dev',
+  apiBase: 'https://trailerfeed.YOURNAME.workers.dev',
 };
 ```
 

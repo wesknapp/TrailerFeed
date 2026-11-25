@@ -3,5 +3,5 @@
 //   'https://trailerfeed-api.yourname.workers.dev'
 // Leave it empty and the app asks each person for their own TMDB key instead.
 window.TRAILERFEED_CONFIG = {
-  apiBase: '',
+  apiBase: 'https://trailerfeed.wesleyknapper.workers.dev',
 };

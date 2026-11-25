@@ -1,6 +1,6 @@
 # Only needed if you deploy from the command line with `npx wrangler deploy`.
 # Deploying by pasting worker.js into the Cloudflare dashboard (see worker/README.md) doesn't use this file.
-name = "trailerfeed-api"
+name = "trailerfeed"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
