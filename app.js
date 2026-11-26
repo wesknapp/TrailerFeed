@@ -45,6 +45,11 @@ const seen = new Set();
 let active = null, activeSince = 0;
 
 // ---------- helpers ----------
+// TMDB is community-edited, so anything that ends up in a URL is checked against a strict pattern first.
+const img = (size, p) => (typeof p === 'string' && /^\/[\w.-]{1,100}$/.test(p) ? IMG + size + p : '');
+const ytKeyOk = (k) => typeof k === 'string' && /^[\w-]{6,32}$/.test(k);
+// Open external pages without giving them a handle back to this tab (prevents "reverse tabnabbing").
+const openExt = (url) => { const w = window.open(url, '_blank', 'noopener,noreferrer'); if (w) w.opener = null; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ymd = (d) => d.toISOString().slice(0, 10);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -136,7 +141,7 @@ function discoverParams() {
 }
 
 function pickTrailer(vids) {
-  const yt = (vids || []).filter((v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'));
+  const yt = (vids || []).filter((v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser') && ytKeyOk(v.key));
   if (!yt.length) return null;
   yt.sort((a, b) =>
     (b.type === 'Trailer') - (a.type === 'Trailer') ||
@@ -291,7 +296,7 @@ function openCal(x) {
   $('#calSheet').classList.remove('hidden');
 }
 $('#calIcs').onclick = () => { if (calTarget) downloadIcs(calTarget); $('#calSheet').classList.add('hidden'); };
-$('#calGoogle').onclick = () => { if (calTarget) window.open(googleCalUrl(calTarget), '_blank'); $('#calSheet').classList.add('hidden'); };
+$('#calGoogle').onclick = () => { if (calTarget) openExt(googleCalUrl(calTarget)); $('#calSheet').classList.add('hidden'); };
 // Your cinema: a chain plus an optional town/branch, used to make the showtimes search specific.
 const CHAINS = {
   GB: ['Odeon', 'Cineworld', 'Vue', 'Everyman', 'Picturehouse', 'Showcase', 'Curzon', 'The Light', 'Omniplex', 'Reel'],
@@ -311,7 +316,7 @@ function renderCard(m) {
   const el = document.createElement('section');
   el.className = 'card';
   el.dataset.id = m.id;
-  const back = m.backdrop_path ? IMG + 'w780' + m.backdrop_path : m.poster_path ? IMG + 'w500' + m.poster_path : '';
+  const back = img('w780', m.backdrop_path) || img('w500', m.poster_path);
   const ri = m.rel = releaseInfo(m);
   const g = (m.genre_ids || []).map(genreName).filter(Boolean).slice(0, 3).join(' · ');
   el.innerHTML = `
@@ -347,14 +352,14 @@ function renderCard(m) {
   el.querySelector('.chips-row')?.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.act === 'cal') openCal({ id: m.id, title: m.title, key: m.trailer.key, calDate: ri.calDate, calKind: ri.calKind });
-    else if (b.dataset.act === 'times') window.open(showtimesUrl(m.title), '_blank');
+    else if (b.dataset.act === 'times') openExt(showtimesUrl(m.title));
   });
   el.querySelector('.actions').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const act = b.dataset.act;
     if (act === 'like') toggleLike(m, b);
     else if (act === 'nope') nope(m, el);
-    else if (act === 'yt') window.open('https://www.youtube.com/watch?v=' + m.trailer.key, '_blank');
+    else if (act === 'yt') openExt('https://www.youtube.com/watch?v=' + m.trailer.key);
   };
   feed.appendChild(el);
   io.observe(el);
@@ -381,8 +386,9 @@ function nope(m, el) {
 }
 
 // ---------- playback ----------
+const YT_ORIGIN = 'https://www.youtube-nocookie.com';
 function ytCmd(iframe, func, args = []) {
-  try { iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {}
+  try { iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), YT_ORIGIN); } catch {}
 }
 
 // ---------- seek bar ----------
@@ -435,13 +441,13 @@ function mountPlayer(el) {
   const k = m.trailer.key;
   const origin = location.origin && location.origin !== 'null' ? '&origin=' + encodeURIComponent(location.origin) : '';
   const f = document.createElement('iframe');
-  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3${origin}`;
+  f.src = `https://www.youtube-nocookie.com/embed/${k}?autoplay=1&mute=1&playsinline=1&rel=0&enablejsapi=1&controls=0&disablekb=1&fs=0&iv_load_policy=3${origin}`;
   f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
   f.allowFullscreen = true;
   f.referrerPolicy = 'strict-origin-when-cross-origin';
   f.onload = () => {
     // ask the player to report play/pause so our state stays in sync
-    try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: k }), '*'); } catch {}
+    try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: k }), YT_ORIGIN); } catch {}
     if (!muted) [300, 1000, 2000].forEach((t) => setTimeout(() => ytCmd(f, 'unMute'), t)); };
   stage.appendChild(f);
 }
@@ -456,7 +462,7 @@ function wake(el) {
 }
 // Player reports its state: 1 = playing, 2 = paused. Keeps our pause icon right when YouTube itself is tapped.
 window.addEventListener('message', (e) => {
-  if (!/youtube(-nocookie)?\.com$/.test(new URL(e.origin).hostname)) return;
+  if (e.origin !== YT_ORIGIN) return;
   let d; try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
   const el = active, f = el?.querySelector('iframe');
   if (!d?.info || !f || e.source !== f.contentWindow) return;
@@ -651,11 +657,11 @@ function paintList() {
   else src = Object.values(listMode === 'liked' ? liked : history).sort((a, b) => b.t - a.t);
   const empty = { liked: 'Tap ♥ on a trailer to save it here.', soon: 'Saved movies that aren\'t out yet show here, soonest first.', watched: 'Trailers you watch for 15s+ show up here.' }[listMode];
   $('#listBody').innerHTML = src.length ? src.map((x) => `
-    <div class="row" data-id="${x.id}">
-      ${x.poster ? `<img src="${IMG + 'w92' + x.poster}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
+    <div class="row" data-id="${+x.id}">
+      ${img('w92', x.poster) ? `<img src="${img('w92', x.poster)}" alt="" loading="lazy">` : '<div class="noimg"></div>'}
       <div><div class="t">${esc(x.title)}</div><div class="s">${esc(x.relText || (x.date ? fmtDate(x.date) : ''))}${listMode === 'soon' ? ' · in ' + daysFrom(when(x)) + ' days' : ''}</div></div>
       <div class="row-btns">
-        ${when(x) && when(x) > today ? `<button data-cal="${x.id}" aria-label="Add to calendar">📅</button>` : ''}
+        ${when(x) && when(x) > today ? `<button data-cal="${+x.id}" aria-label="Add to calendar">📅</button>` : ''}
         <a href="https://www.youtube.com/watch?v=${esc(x.key)}" target="_blank" rel="noopener">▶ Trailer</a>
       </div>
     </div>`).join('') : `<div class="none">${empty}</div>`;

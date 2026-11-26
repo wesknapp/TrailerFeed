@@ -22,12 +22,23 @@ const ROUTES = [
   { re: /^\/3\/movie\/\d{1,9}$/, ttl: 6 * 3600 },
 ];
 
-// Query parameters the app sends; anything else is dropped (so the cache can't be flooded with junk variations).
-const ALLOWED_PARAMS = new Set([
-  'language', 'page', 'sort_by', 'include_adult', 'include_video', 'region', 'with_genres', 'with_original_language',
-  'primary_release_date.gte', 'primary_release_date.lte', 'vote_count.gte', 'append_to_response',
-]);
-const ALLOWED_APPEND = new Set(['videos', 'release_dates', 'watch/providers']);
+// Query parameters the app sends, each with the exact shape allowed. Anything else is dropped, and a value that
+// doesn't match is refused, so the cache (and TMDB) can't be flooded with junk variations.
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const PARAMS = {
+  language: /^[a-z]{2}(-[A-Z]{2})?$/,
+  page: /^([1-9]\d?|[1-4]\d\d|500)$/,
+  sort_by: /^(popularity|primary_release_date|vote_average)\.(asc|desc)$/,
+  include_adult: /^false$/,
+  include_video: /^(true|false)$/,
+  region: /^[A-Z]{2}$/,
+  with_genres: /^\d{1,6}([|,]\d{1,6}){0,19}$/,
+  with_original_language: /^[a-z]{2}$/,
+  'primary_release_date.gte': DATE,
+  'primary_release_date.lte': DATE,
+  'vote_count.gte': /^\d{1,5}$/,
+  append_to_response: /^(videos|release_dates|watch\/providers)(,(videos|release_dates|watch\/providers)){0,2}$/,
+};
 
 // Per-visitor limit. Counts live in memory per Cloudflare server, so it's a soft limit, which is enough to stop casual abuse.
 const LIMIT_PER_MIN = 240;
@@ -67,9 +78,10 @@ export default {
       return json(200, { ok: true, service: 'TrailerFeed API', tokenSet: !!env.TMDB_TOKEN }, ch);
     }
 
-    // Only the sites you list may use it from a browser.
+    // Only the sites you list may use it. Browsers always send Origin on these requests, so a missing one means
+    // a script or another tool; that's refused too. (A determined script can fake it; the rate limit covers that.)
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
-    if (allowed.length && origin && !allowed.includes(origin)) return json(403, { error: 'Origin not allowed' }, ch);
+    if (allowed.length && !allowed.includes(origin)) return json(403, { error: 'Origin not allowed' }, ch);
 
     const route = ROUTES.find((r) => r.re.test(url.pathname));
     if (!route) return json(404, { error: 'Not available through this server' }, ch);
@@ -80,11 +92,11 @@ export default {
 
     // Rebuild the TMDB URL from allowed params only, in a fixed order (better cache hits).
     const upstream = new URL(TMDB + url.pathname);
-    [...url.searchParams.keys()].filter((k) => ALLOWED_PARAMS.has(k)).sort().forEach((k) => {
-      let v = url.searchParams.get(k).slice(0, 200);
-      if (k === 'append_to_response') v = v.split(',').filter((x) => ALLOWED_APPEND.has(x)).join(',');
-      if (v) upstream.searchParams.set(k, v);
-    });
+    for (const k of [...new Set(url.searchParams.keys())].filter((k) => PARAMS[k]).sort()) {
+      const v = url.searchParams.get(k);
+      if (!PARAMS[k].test(v)) return json(400, { error: 'Bad value for ' + k }, ch);
+      upstream.searchParams.set(k, v);
+    }
 
     // Shared cache (works when the Worker is on your own domain; on workers.dev the browser cache below still helps).
     const cache = caches.default;
