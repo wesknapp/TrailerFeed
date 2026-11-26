@@ -104,6 +104,9 @@ a { color: #7cc4ff; }
 .card .scrub { --p: 0; position: relative; z-index: 4; height: 26px; display: flex; align-items: center; padding: 0 14px;
   touch-action: none; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .25s; }
 .card .scrub.ready { opacity: 1; pointer-events: auto; }
+.card .scrub .pp { flex: none; width: 34px; height: 26px; margin: 0 6px 0 -6px; display: grid; place-items: center; font-size: 15px; color: #fff; }
+.card .scrub .pp::before { content: '❚❚'; letter-spacing: -2px; }
+.card.paused .scrub .pp::before { content: '▶'; letter-spacing: 0; }
 .card .scrub .track { position: relative; flex: 1; height: 3px; background: #ffffff38; border-radius: 3px; transition: height .15s; }
 .card .scrub .bar { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p) * 100%); background: #e50914; border-radius: 3px; }
 .card .scrub .knob { position: absolute; top: 50%; left: calc(var(--p) * 100%); width: 13px; height: 13px; border-radius: 50%;

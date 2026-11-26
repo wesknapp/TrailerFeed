@@ -317,7 +317,7 @@ function renderCard(m) {
   el.innerHTML = `
     <div class="bg" style="background-image:url('${back}')"></div>
     <div class="stage" style="background-image:url('${back}')"><div class="play-hint">▶</div></div>
-    <div class="scrub"><div class="track"><div class="bar"></div><div class="knob"></div></div><span class="time"></span></div>
+    <div class="scrub"><button class="pp" aria-label="Pause or play"></button><div class="track"><div class="bar"></div><div class="knob"></div></div><span class="time"></span></div>
     <div class="info">
       <h2>${esc(m.title)}</h2>
       <div class="meta">
@@ -408,8 +408,10 @@ function bindScrub(el) {
   let frac = 0;
   const at = (e) => { const r = track.getBoundingClientRect(); frac = clamp((e.clientX - r.left) / r.width, 0, 1);
     paintScrub(el, frac); sc.querySelector('.time').textContent = fmtT(frac * played.dur) + ' / ' + fmtT(played.dur); };
+  // Our own pause/play, so there's no need to tap the YouTube player (which brings up its overlay)
+  sc.querySelector('.pp').addEventListener('click', (e) => { e.stopPropagation(); if (active === el) togglePause(el); });
   sc.addEventListener('pointerdown', (e) => {
-    if (active !== el || !played.dur) return;
+    if (e.target.closest('.pp') || active !== el || !played.dur) return;
     e.preventDefault(); e.stopPropagation();
     try { sc.setPointerCapture(e.pointerId); } catch {}
     scrubbing = true; sc.classList.add('drag'); clearTimeout(calmTimer); el.classList.remove('calm'); at(e);
