@@ -41,6 +41,8 @@ const $ = (s) => document.querySelector(s);
 const feed = $('#feed');
 const items = new Map();                // movieId -> movie object
 let page = 0, exhausted = false, loading = false;
+// Which TMDB result pages we've loaded this session, and how many exist for the current filters.
+const pagesDone = new Set(); let totalPages = 0;
 const seen = new Set();
 let active = null, activeSince = 0;
 
@@ -170,15 +172,36 @@ function tasteScore(m) {
 function rank(batch) {
   if (filters.sort === 'trailer') return batch.sort((a, b) => new Date(b.trailer.published_at) - new Date(a.trailer.published_at));
   if (filters.sort !== 'rec') return batch; // keep TMDB's order exactly
-  // keep TMDB popularity order as the baseline, nudge by learned taste
+  // keep TMDB popularity order as the baseline, nudge by learned taste, add a little shuffle,
+  // and push trailers you've already seen once behind ones you haven't
   return batch
-    .map((m, i) => ({ m, s: tasteScore(m) - i * 0.15 }))
+    .map((m, i) => ({ m, s: tasteScore(m) - i * 0.15 + Math.random() * 1.2 - (views[m.trailer.key] ? 2 : 0) }))
     .sort((a, b) => b.s - a.s)
     .map(({ m }) => {
       const top = (m.genre_ids || []).filter((g) => (taste[g] || 0) >= 2).sort((a, b) => taste[b] - taste[a])[0];
       if (top && genreName(top)) m.why = 'Because you like ' + genreName(top);
       return m;
     });
+}
+
+// Picks the next page of results to load.
+//  - Recommended: mostly the popular pages, but starting somewhere different each visit (random pick from the
+//    next few unloaded pages), so you don't get the same opening trailers every time.
+//  - Surprise me: any page, in random order. Capped so it stays among films that are likely to have trailers.
+//  - Other sorts: strictly in order, since the order is the point.
+function nextPage() {
+  const mode = filters.sort === 'random' ? 'random' : filters.sort === 'rec' ? 'mixed' : 'order';
+  const cap = mode === 'random' ? (filters.release === 'any' || filters.release === 'year' ? 60 : 500) : 500;
+  const last = totalPages ? Math.min(totalPages, cap) : 0;
+  if (mode === 'order' || (!last && mode === 'mixed' && pagesDone.size)) {
+    let p = 1; while (pagesDone.has(p)) p++;
+    return !last || p <= last ? p : 0;
+  }
+  if (!last) return 1 + Math.floor(Math.random() * (mode === 'random' ? 20 : 4)); // first guess, before we know the total
+  const open = []; for (let p = 1; p <= last; p++) if (!pagesDone.has(p)) open.push(p);
+  if (!open.length) return 0;
+  const pool = mode === 'random' ? open : open.slice(0, 4);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 async function loadMore() {
@@ -190,9 +213,13 @@ async function loadMore() {
   let added = 0, tried = 0;
   try {
     while (added < 5 && tried < maxPages && !exhausted) {
-      page++; tried++;
+      page = nextPage(); tried++;
+      if (!page) { exhausted = true; break; }
       const data = await tmdb('/discover/movie', discoverParams());
-      if (page >= Math.min(data.total_pages || 0, 500)) exhausted = true;
+      pagesDone.add(page);
+      totalPages = Math.min(data.total_pages || 0, 500);
+      if (!totalPages || !nextPage()) exhausted = true; // no results at all, or every page loaded
+      if (filters.sort === 'random') data.results.sort(() => Math.random() - 0.5);
       const cands = data.results.filter((m) => !seen.has(m.id) && !disliked[m.id] && inRelease(m));
       cands.forEach((m) => seen.add(m.id));
       const withVids = await Promise.all(cands.map(async (m) => {
@@ -227,7 +254,7 @@ function resetFeed() {
   if (active) deactivate(active);
   feed.innerHTML = '';
   feed.scrollTop = 0;
-  page = 0; exhausted = false; seen.clear(); items.clear();
+  page = 0; exhausted = false; seen.clear(); items.clear(); pagesDone.clear(); totalPages = 0;
   updateFilterLabel();
   loadMore();
 }
@@ -590,7 +617,7 @@ const REL_LABEL = { new: 'New', year: 'Past year', upcoming: 'Coming soon', any:
 let draft = null;
 
 function updateFilterLabel() {
-  const SORT_LABEL = { popular: 'Popular', oldest: 'Oldest first', newest: 'Newest first', trailer: 'New trailers', rated: 'Top rated' };
+  const SORT_LABEL = { random: 'Surprise', popular: 'Popular', oldest: 'Oldest first', newest: 'Newest first', trailer: 'New trailers', rated: 'Top rated' };
   let t = REL_LABEL[filters.release] || 'New';
   if (SORT_LABEL[filters.sort]) t += ' · ' + SORT_LABEL[filters.sort];
   if (filters.genres.length === 1) t += ' · ' + (genreName(filters.genres[0]) || '');
