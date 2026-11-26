@@ -620,6 +620,11 @@ $('#applyFilters').onclick = () => {
   $('#filterSheet').classList.add('hidden');
   resetFeed();
 };
+// Optional, off by default: trim YouTube's title bar and logo off the player (see .trim-yt in style.css)
+let trimYT = LS.get('trimYT', false);
+document.body.classList.toggle('trim-yt', trimYT);
+$('#trimYT').checked = trimYT;
+$('#trimYT').onchange = (e) => { trimYT = e.target.checked; LS.set('trimYT', trimYT); document.body.classList.toggle('trim-yt', trimYT); };
 $('#resetTaste').onclick = () => { if (confirm('Forget what you like and start fresh?')) { taste = {}; disliked = {}; LS.del('taste'); LS.del('disliked'); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
 $('#clearHistory').onclick = () => { if (confirm('Clear your watched list?')) { history = {}; views = {}; countedThisSession.clear(); LS.del('history'); LS.set('views', views); resetFeed(); $('#filterSheet').classList.add('hidden'); } };
 // Country + cinema live in the filter sheet and take effect on Apply, like the other filters.
